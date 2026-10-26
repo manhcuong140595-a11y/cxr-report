@@ -182,8 +182,8 @@
       edit.setAttribute("aria-label", "Sửa thông tin chuyến");
       edit.classList.add("icon-btn");
     }
-    if (tabs) {
-      tabs.classList.add("m3-segmented");
+    if (tabs) tabs.remove(); // bỏ thanh tab Thông tin / Biểu mẫu / Tài liệu: chi tiết chuyến luôn là Biểu mẫu
+    if (false) {
       tabs.querySelectorAll("button").forEach((b) => {
         const k = b.dataset.tab;
         b.setAttribute("aria-label", TAB_SHORT[k] || b.textContent);
@@ -196,6 +196,7 @@
 
   const oldDetail = renderDetail;
   renderDetail = function () {
+    tabName = "forms";
     document.body.classList.toggle("mobile-form-open", tabName === "forms");
     document.body.classList.add("mobile-detail");
     document.body.classList.remove("mobile-typing");
@@ -227,7 +228,7 @@
       .slice(0, 6);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.24 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.25 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
