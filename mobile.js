@@ -227,7 +227,7 @@
       .slice(0, 6);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.13 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.14 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -236,6 +236,60 @@
       updateResults();
     };
     bindOpen();
+  };
+
+  // ---------- Hộp tạo/sửa chuyến: Chuyến đến / Chuyến đi + nút cố định ----------
+  // Số hiệu lưu dạng "ĐẾN/ĐI" (vd VJ123/VJ124) giống ô FLT No trên mẫu.
+  const splitFlight = (v) => {
+    const [a = "", d = ""] = String(v || "").split("/");
+    return [a.trim(), d.trim()];
+  };
+  const oldEditor = openEditor;
+  openEditor = function (f) {
+    oldEditor(f);
+    const form = $("flightForm"),
+      orig = form?.elements.flight;
+    if (!form || !orig || !$("flightDialog").open) return;
+    const [arr, dep] = splitFlight(orig.value);
+    const label = orig.closest("label");
+    orig.type = "hidden";
+    orig.required = false;
+    const wrap = document.createElement("div");
+    wrap.className = "flight-pair";
+    wrap.innerHTML = `<span class="flight-pair-title">Số hiệu chuyến bay * <small>Đến / Đi</small></span><div class="flight-pair-row"><input name="flightArr" placeholder="Chuyến đến" autocapitalize="characters" autocomplete="off" aria-label="Số hiệu chuyến đến"><span class="flight-slash">/</span><input name="flightDep" placeholder="Chuyến đi" autocapitalize="characters" autocomplete="off" aria-label="Số hiệu chuyến đi"></div>`;
+    label.replaceWith(wrap);
+    wrap.appendChild(orig);
+    const a = wrap.querySelector('[name="flightArr"]'),
+      d = wrap.querySelector('[name="flightDep"]');
+    a.value = arr;
+    d.value = dep;
+    const sync = () => {
+      const x = a.value.trim().toUpperCase(),
+        y = d.value.trim().toUpperCase();
+      orig.value = x && y ? `${x}/${y}` : x || (y ? `/${y}` : "");
+      a.setCustomValidity(orig.value ? "" : "Nhập số hiệu chuyến đến hoặc chuyến đi");
+    };
+    a.oninput = d.oninput = sync;
+    sync();
+    // Thanh nút cố định ở đáy hộp (thay nút "Lưu hồ sơ" phải kéo xuống cuối)
+    form.querySelector(":scope > button.primary")?.classList.add("legacy-submit");
+    if (!form.querySelector(".dialog-footer")) {
+      const foot = document.createElement("div");
+      foot.className = "dialog-footer";
+      foot.innerHTML = `<button type="button" class="footer-cancel">HỦY</button><button type="submit" class="primary footer-save">LƯU CHUYẾN</button>`;
+      foot.querySelector(".footer-cancel").onclick = () => $("flightDialog").close();
+      form.appendChild(foot);
+    }
+    if (!f) setTimeout(() => a.focus(), 50);
+  };
+  // Ô FLT No trên mẫu: phần trước "/" = chuyến đến, phần sau = chuyến đi.
+  const oldInitial = initialFormValue;
+  initialFormValue = function (f, field) {
+    const k = field.id.replace(/^(f421_|f551_|f09_|f208_)/, "");
+    if (k === "fltBefore") return splitFlight(f.flight)[0];
+    if (k === "fltAfter") return splitFlight(f.flight)[1];
+    if (k === "bbbtFlight") return f.flight || ""; // ô "Flight No." của BBBT (bản gốc tìm nhầm id bbbtFlightNo)
+    return oldInitial(f, field);
   };
 
   // ---------- Biểu mẫu: canh vừa ngang theo nội dung ----------
@@ -284,16 +338,25 @@
         input?.blur();
         const next = templateId === BBBT ? lastNonBbbt || DEFAULT_TEMPLATE : BBBT;
         if (!templateList().some((t) => t.id === next)) return;
+        if (![...sel.options].some((o) => o.value === next)) sel.add(new Option(next, next));
         sel.value = next;
         sel.dispatchEvent(new Event("change", { bubbles: true }));
       };
       sel.after(bb);
     }
-    // Màn hẹp: bỏ chữ "FSAGS" trong tên mẫu cho đủ chỗ (vd "42.3").
-    if (sel && innerWidth < 400)
+    // Ô chọn mẫu: luôn ghi gọn (vd "42.3") để APK và web hiển thị như nhau trên mọi máy.
+    // BBBT đã có nút riêng → bỏ khỏi ô chọn; khi đang mở BBBT, ô chọn vẫn hiện mẫu đang dùng trước đó.
+    if (sel) {
       sel.querySelectorAll("option").forEach((o) => {
         o.textContent = o.textContent.replace(/^FSAGS\s*/i, "");
+        if (o.value === BBBT && sel.options.length > 1) o.remove();
       });
+      if (templateId === BBBT) {
+        const back = lastNonBbbt && templateList().some((t) => t.id === lastNonBbbt) ? lastNonBbbt : DEFAULT_TEMPLATE;
+        sel.value = back;
+        sel.classList.add("on-bbbt");
+      }
+    }
     zoom.addEventListener("pointerdown", (e) => {
       if (e.target.closest("button") && input) e.preventDefault();
     });

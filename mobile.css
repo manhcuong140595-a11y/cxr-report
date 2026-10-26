@@ -1312,7 +1312,7 @@ body[data-theme] .mobile-form-open #templateSelect,
 .mobile-form-open #templateSelect {
   padding: 0 8px 0 12px;
 }
-@media (max-width: 380px) {
+/* Hàng chọn mẫu: kiểu gọn cho MỌI máy (APK = web) */
   .mobile-form-open .natural-forms > .tools {
     gap: 6px;
     padding: 0 8px 8px;
@@ -1334,9 +1334,79 @@ body[data-theme] .mobile-form-open #templateSelect,
     height: 40px;
     min-height: 40px;
   }
-}
 /* Hiệu năng Chrome điện thoại: cô lập bố cục từng trang giấy → khi thanh địa chỉ/bàn phím
    đổi chiều cao, trình duyệt không phải tính lại hàng trăm ô bên trong. */
 .mobile-form-open .paper {
   contain: layout paint;
+}
+
+/* Đang mở BBBT: ô chọn hiện mờ mẫu sẽ quay về */
+body[data-theme] .mobile-form-open #templateSelect.on-bbbt,
+.mobile-form-open #templateSelect.on-bbbt {
+  color: var(--md-on-surface-variant);
+}
+/* ---------- Hộp tạo chuyến: Chuyến đến / Chuyến đi ---------- */
+.flight-pair {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+  margin: 7px 0;
+}
+.flight-pair-title {
+  color: var(--md-on-surface-variant);
+  font-size: 13px;
+  font-weight: 500;
+}
+.flight-pair-title small {
+  margin-left: 4px;
+  font-weight: 400;
+}
+.flight-pair-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.flight-pair-row input {
+  min-width: 0;
+  width: 100%;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.flight-slash {
+  font-size: 26px;
+  font-weight: 300;
+  color: var(--md-on-surface-variant);
+}
+/* Nút HỦY / LƯU CHUYẾN luôn hiện ở đáy hộp */
+#flightForm .legacy-submit {
+  display: none !important;
+}
+#flightForm .dialog-footer {
+  position: sticky;
+  bottom: -24px;
+  margin: 16px -24px -24px;
+  padding: 12px 24px max(16px, env(safe-area-inset-bottom));
+  background: var(--md-surface-high);
+  border-top: 1px solid var(--md-outline-variant);
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+  z-index: 5;
+}
+body[data-theme] #flightForm .dialog-footer .footer-cancel,
+#flightForm .dialog-footer .footer-cancel {
+  border: 1px solid var(--md-outline);
+  background: transparent;
+  color: var(--md-primary);
+}
+body[data-theme] #flightForm .dialog-footer .footer-save,
+#flightForm .dialog-footer .footer-save {
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  border: 0;
+}
+/* Ngày khai thác cũng chiếm cả hàng → các cặp Đường bay/Đăng ký, Hãng/Vị trí, STA/ATA, STD/ATD giữ đúng cặp */
+#flightFields label:has(> input[name="date"]) {
+  grid-column: 1 / -1;
 }
