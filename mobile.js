@@ -28,6 +28,8 @@
     light:
       "M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM2 13h2a1 1 0 0 0 0-2H2a1 1 0 0 0 0 2zm18 0h2a1 1 0 0 0 0-2h-2a1 1 0 0 0 0 2zM11 2v2a1 1 0 0 0 2 0V2a1 1 0 0 0-2 0zm0 18v2a1 1 0 0 0 2 0v-2a1 1 0 0 0-2 0zM5.99 4.58a1 1 0 0 0-1.41 1.41l1.06 1.06a1 1 0 0 0 1.41-1.41zm12.37 12.37a1 1 0 0 0-1.41 1.41l1.06 1.06a1 1 0 0 0 1.41-1.41zm1.06-10.96a1 1 0 0 0-1.41-1.41l-1.06 1.06a1 1 0 0 0 1.41 1.41zM7.05 18.36a1 1 0 0 0-1.41-1.41l-1.06 1.06a1 1 0 0 0 1.41 1.41z",
     dark: "M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z",
+    trash: "M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z",
+    sort: "M3 18h6v-2H3zM3 6v2h18V6zm0 7h12v-2H3z",
     check: "M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
     share:
       "M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11A2.99 2.99 0 1 0 15 5c0 .24.04.47.09.7L8.04 9.81a3 3 0 1 0 0 4.38l7.12 4.16c-.05.21-.08.43-.08.65a2.92 2.92 0 1 0 2.92-2.92z",
@@ -192,6 +194,19 @@
       ph.appendChild(tabs);
     }
     if (edit) ph.appendChild(edit);
+    if (!ph.querySelector(".del-flight")) {
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "icon-btn del-flight";
+      del.setAttribute("aria-label", "Xóa chuyến bay");
+      del.title = "Xóa chuyến bay";
+      del.innerHTML = icon("trash");
+      del.onclick = async () => {
+        const id = selected;
+        if (id && (await deleteFlights([id]))) go("home");
+      };
+      ph.appendChild(del);
+    }
   }
 
   const oldDetail = renderDetail;
@@ -207,13 +222,180 @@
     layout();
   };
 
+  // ---------- Sắp xếp + chọn nhiều để xóa ----------
+  const SORT_KEY = "cxr-mobile-sort";
+  const SORTS = [
+    ["updated", "Mới sửa"],
+    ["date", "Ngày bay"],
+    ["flight", "Số hiệu"],
+  ];
+  const sortMode = () => {
+    try {
+      const v = localStorage.getItem(SORT_KEY);
+      return SORTS.some((s) => s[0] === v) ? v : "updated";
+    } catch {
+      return "updated";
+    }
+  };
+  const timeOf = (x) => x.sta || x.std || x.ata || x.atd || "";
+  function sortFlights(rows) {
+    const m = sortMode();
+    const by = {
+      updated: (a, b) => (b.updatedAt || b.date || "").localeCompare(a.updatedAt || a.date || ""),
+      date: (a, b) => (b.date || "").localeCompare(a.date || "") || timeOf(a).localeCompare(timeOf(b)),
+      flight: (a, b) => (a.flight || "").localeCompare(b.flight || "", "vi", { numeric: true }) || (b.date || "").localeCompare(a.date || ""),
+    }[m];
+    return [...rows].sort(by);
+  }
+  const picked = new Set();
+  let selecting = false;
+  const rerenderList = () => (page === "home" ? renderHome() : typeof updateResults === "function" && $("results") ? updateResults() : render());
+  function sortBar() {
+    const m = sortMode();
+    return `<div class="sort-bar" role="group" aria-label="Sắp xếp">${icon("sort", "sort-ic")}${SORTS.map(
+      ([k, t]) => `<button type="button" class="sort-chip" data-sort="${k}" aria-pressed="${m === k}">${t}</button>`,
+    ).join("")}<button type="button" class="sort-chip select-chip" data-select-mode aria-pressed="${selecting}">${icon("trash")}<span>Xóa</span></button></div>`;
+  }
+  function selectBar() {
+    let b = document.getElementById("selectBar");
+    if (!selecting) {
+      b?.remove();
+      document.body.classList.remove("mobile-selecting");
+      return;
+    }
+    document.body.classList.add("mobile-selecting");
+    if (!b) {
+      b = document.createElement("div");
+      b.id = "selectBar";
+      b.className = "select-bar";
+      document.body.appendChild(b);
+    }
+    const n = picked.size;
+    b.innerHTML = `<button type="button" class="text-btn" data-sel="cancel">Hủy</button><span class="sel-count">Đã chọn ${n}</span><button type="button" class="text-btn" data-sel="all">Chọn hết</button><button type="button" class="danger-btn" data-sel="delete" ${n ? "" : "disabled"}>${icon("trash")}<span>Xóa${n ? " (" + n + ")" : ""}</span></button>`;
+  }
+  function confirmDelete(ids) {
+    return new Promise((resolve) => {
+      let d = document.getElementById("confirmDelete");
+      if (!d) {
+        d = document.createElement("dialog");
+        d.id = "confirmDelete";
+        document.body.appendChild(d);
+      }
+      const names = ids.map((id) => flights.find((f) => f.id === id)).filter(Boolean);
+      const list = names.slice(0, 5).map((f) => `<li><b>${escape(f.flight || "")}</b> · ${escape(f.date || "")}</li>`).join("") + (names.length > 5 ? `<li>… và ${names.length - 5} chuyến khác</li>` : "");
+      d.innerHTML = `<h2>Xóa ${ids.length} chuyến bay?</h2><p class="muted">Toàn bộ biểu mẫu đã nhập của chuyến sẽ bị xóa khỏi máy, không khôi phục được.</p><ul class="del-list">${list}</ul><div class="dialog-actions"><button type="button" class="text-btn" data-no>Hủy</button><button type="button" class="danger-btn" data-yes>${icon("trash")}<span>Xóa</span></button></div>`;
+      const done = (v) => {
+        d.close();
+        resolve(v);
+      };
+      d.querySelector("[data-no]").onclick = () => done(false);
+      d.querySelector("[data-yes]").onclick = () => done(true);
+      d.oncancel = () => resolve(false);
+      d.showModal();
+    });
+  }
+  async function deleteFlights(ids) {
+    if (!ids.length || !(await confirmDelete(ids))) return false;
+    try {
+      await api("/api/flights", { method: "DELETE", body: JSON.stringify({ ids }) });
+      const set = new Set(ids);
+      flights = flights.filter((f) => !set.has(f.id));
+      notice(`Đã xóa ${ids.length} chuyến bay`);
+      return true;
+    } catch (e) {
+      notice(e.message || "KHÔNG XÓA ĐƯỢC");
+      return false;
+    }
+  }
+  window.CXRDeleteFlights = deleteFlights;
+  const exitSelect = () => {
+    selecting = false;
+    picked.clear();
+    selectBar();
+    rerenderList();
+  };
+  // Chọn: bấm "Xóa" trên thanh sắp xếp hoặc nhấn giữ 1 chuyến; khi đang chọn, bấm chuyến = tick/bỏ tick.
+  let pressTimer = 0, pressed = null, longAt = 0;
+  document.addEventListener("pointerdown", (e) => {
+    const c = e.target.closest?.(".flight-card");
+    if (!c || selecting) return;
+    pressed = c;
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {
+      selecting = true;
+      picked.clear();
+      picked.add(c.dataset.open);
+      longAt = Date.now();
+      rerenderList();
+      selectBar();
+      navigator.vibrate?.(20);
+    }, 550);
+  });
+  ["pointerup", "pointercancel", "pointermove"].forEach((t) =>
+    document.addEventListener(t, (e) => {
+      if (t === "pointermove" && pressed && Math.abs(e.movementY) + Math.abs(e.movementX) < 3) return;
+      clearTimeout(pressTimer);
+      pressed = null;
+    }),
+  );
+  document.addEventListener("contextmenu", (e) => e.target.closest?.(".flight-card") && e.preventDefault());
+  document.addEventListener(
+    "click",
+    async (e) => {
+      const sortBtn = e.target.closest?.("[data-sort]");
+      if (sortBtn) {
+        try {
+          localStorage.setItem(SORT_KEY, sortBtn.dataset.sort);
+        } catch {}
+        rerenderList();
+        return;
+      }
+      if (e.target.closest?.("[data-select-mode]")) {
+        selecting ? exitSelect() : ((selecting = true), picked.clear(), rerenderList(), selectBar());
+        return;
+      }
+      const sel = e.target.closest?.("[data-sel]");
+      if (sel) {
+        const a = sel.dataset.sel;
+        if (a === "cancel") exitSelect();
+        else if (a === "all") {
+          document.querySelectorAll(".flight-card[data-open]").forEach((c) => picked.add(c.dataset.open));
+          rerenderList();
+          selectBar();
+        } else if (a === "delete" && (await deleteFlights([...picked]))) exitSelect();
+        return;
+      }
+      const c = e.target.closest?.(".flight-card");
+      if (c && selecting) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (Date.now() - longAt < 900) return; // nhả tay sau nhấn giữ: không bỏ tick ngay
+        const id = c.dataset.open;
+        picked.has(id) ? picked.delete(id) : picked.add(id);
+        c.classList.toggle("is-selected", picked.has(id));
+        selectBar();
+      }
+    },
+    true,
+  );
+  const oldGo = go;
+  go = function (p) {
+    if (selecting) {
+      selecting = false;
+      picked.clear();
+      selectBar();
+    }
+    return oldGo(p);
+  };
+
   table = function (rows) {
+    rows = sortFlights(rows);
     return rows.length
-      ? '<div class="flight-cards">' +
+      ? sortBar() + '<div class="flight-cards' + (selecting ? " selecting" : "") + '">' +
           rows
             .map(
               (x) =>
-                `<button class="flight-card" data-open="${escape(x.id)}"><span class="flight-badge">${icon("flight")}</span><span class="flight-main"><strong>${escape(x.flight)}</strong><span class="flight-route">${escape(x.route || "Chưa nhập đường bay")}</span><small>${escape(x.date)} · ${escape(x.reg || "Chưa nhập đăng ký tàu")}</small></span>${icon("chevron", "flight-arrow")}</button>`,
+                `<button class="flight-card${picked.has(x.id) ? " is-selected" : ""}" data-open="${escape(x.id)}"><span class="flight-badge">${icon("flight")}${icon("check", "sel-tick")}</span><span class="flight-main"><strong>${escape(x.flight)}</strong><span class="flight-route">${escape(x.route || "Chưa nhập đường bay")}</span><small>${escape(x.date)} · ${escape(x.reg || "Chưa nhập đăng ký tàu")}</small></span>${icon("chevron", "flight-arrow")}</button>`,
             )
             .join("") +
           "</div>"
@@ -221,14 +403,10 @@
   };
 
   renderHome = function () {
-    const recent = [...flights]
-      .sort((a, b) =>
-        (b.updatedAt || b.date).localeCompare(a.updatedAt || a.date),
-      )
-      .slice(0, 6);
+    const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.25 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.26 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");

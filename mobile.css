@@ -1485,3 +1485,142 @@ body[data-theme] .route-row input.route-fixed {
   color: var(--md-on-surface-variant);
   pointer-events: none;
 }
+
+/* ---------- Sắp xếp + chọn để xóa chuyến bay ---------- */
+.sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 0 10px;
+  padding: 2px 0;
+}
+.sort-bar::-webkit-scrollbar {
+  display: none;
+}
+.sort-bar .sort-ic {
+  color: var(--md-on-surface-variant);
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+body[data-theme] .sort-chip,
+.sort-chip {
+  flex-shrink: 0;
+  height: 34px;
+  min-height: 34px;
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--md-outline-variant);
+  background: transparent;
+  color: var(--md-on-surface-variant);
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+body[data-theme] .sort-chip[aria-pressed="true"],
+.sort-chip[aria-pressed="true"] {
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  border-color: transparent;
+}
+.sort-chip.select-chip {
+  margin-left: auto;
+}
+.sort-chip .m3-icon {
+  width: 18px;
+  height: 18px;
+}
+.flight-badge .sel-tick {
+  display: none;
+}
+.flight-cards.selecting .flight-arrow {
+  visibility: hidden;
+}
+.flight-cards.selecting .flight-badge {
+  background: transparent;
+  border: 2px solid var(--md-outline);
+}
+.flight-cards.selecting .flight-badge .m3-icon:not(.sel-tick) {
+  display: none;
+}
+.flight-cards.selecting .flight-card.is-selected .flight-badge {
+  background: var(--md-error);
+  border-color: var(--md-error);
+  color: #fff;
+}
+.flight-cards.selecting .flight-card.is-selected .sel-tick {
+  display: block;
+  transform: none;
+}
+body[data-theme] .flight-cards.selecting .flight-card.is-selected,
+.flight-cards.selecting .flight-card.is-selected {
+  background: var(--md-error-container);
+}
+.flight-card {
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+body.mobile-selecting .m3-fab {
+  display: none;
+}
+.select-bar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 8px 8px 4px;
+  border-radius: 20px;
+  background: var(--md-surface-high);
+  color: var(--md-on-surface);
+  box-shadow: var(--md-shadow-2);
+}
+.select-bar .sel-count {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+}
+body[data-theme] .danger-btn,
+.danger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0 16px;
+  border-radius: 20px;
+  border: 0;
+  background: var(--md-error);
+  color: #fff;
+  font-weight: 600;
+}
+.danger-btn:disabled {
+  opacity: 0.4;
+}
+.danger-btn .m3-icon {
+  width: 18px;
+  height: 18px;
+}
+#confirmDelete .del-list {
+  margin: 8px 0 16px;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+#confirmDelete .dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  align-items: center;
+}
+body[data-theme] .m3-appbar button.del-flight,
+.m3-appbar button.del-flight {
+  color: var(--md-error);
+}
