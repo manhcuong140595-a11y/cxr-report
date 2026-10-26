@@ -1,0 +1,41 @@
+/* Theme colors apply to the application shell, never the printed report. */
+body[data-theme]{--ink:#d5e6ef;--surface:#0b202e;--soft:#102c3e;--side:#081a26;--input:#0a1f2e;--theme-accent:#36d2df;--hero-ink:#edf8ff;--hero-bg:#103a50;--accent:var(--theme-accent);background:var(--bg);color:var(--ink)}
+body[data-theme=pastel]{--bg:#f5f2fa;--ink:#3e354e;--surface:#fff;--soft:#ece7f4;--side:#eee8f5;--input:#fcfaff;--border:#d7cce4;--muted:#746682;--theme-accent:#71549c;--hero-bg:#e6dcef;--hero-ink:#49375f}
+body[data-theme=sky]{--bg:#edf6fc;--ink:#233e52;--surface:#fff;--soft:#dfedf7;--side:#e2eef7;--input:#f8fcff;--border:#c5dbe9;--muted:#577084;--theme-accent:#26688b;--hero-bg:#c6e5f6;--hero-ink:#234d68}
+body[data-theme=sunset]{--bg:#fff4ed;--ink:#533c36;--surface:#fffdfb;--soft:#f8e6dc;--side:#f9e9df;--input:#fffaf6;--border:#e5cbbd;--muted:#83675c;--theme-accent:#975137;--hero-bg:#f5d5c5;--hero-ink:#603d35}
+body[data-theme=night]{--bg:#101b30;--ink:#e1eaf9;--surface:#1a2943;--soft:#243653;--side:#142239;--input:#15233b;--border:#354966;--muted:#acbdd5;--theme-accent:#9bbef6;--hero-bg:#263d65;--hero-ink:#edf4ff}
+@media screen{
+body[data-theme] aside{background:var(--side);overflow-y:auto}
+body[data-theme] header,body[data-theme] .card,body[data-theme] dialog:not(#fieldDialog){background:var(--surface);color:var(--ink)}
+body[data-theme] button{background:var(--soft)}body[data-theme] button.primary,body[data-theme] .login-button{background:var(--accent);color:var(--surface)}
+body[data-theme] nav button{background:transparent}body[data-theme] nav button.active{background:var(--soft);border-color:var(--border);border-left-color:var(--accent)}
+body[data-theme] nav .ico,body[data-theme] .accent{color:var(--accent)}body[data-theme] .navgroup,body[data-theme] label,body[data-theme] footer{color:var(--muted)}
+body[data-theme] input:not(.paper-input),body[data-theme] select,body[data-theme] textarea:not(.paper-input){background:var(--input);color:var(--ink);border-color:var(--border)}
+body[data-theme] .user,body[data-theme] .airlines,body[data-theme] .airline,body[data-theme] .metric,body[data-theme] .notice,body[data-theme] .ownership-note,body[data-theme] .form-dock{background:var(--soft);color:var(--ink);border-color:var(--border)}
+body[data-theme] .metric strong{color:var(--ink)}body[data-theme] .metric .symbol{color:var(--accent);opacity:.5}body[data-theme] .avatar,body[data-theme] .tag{background:var(--surface);color:var(--accent);border-color:var(--border)}
+body[data-theme] .form-dock span{color:var(--muted)}body[data-theme] #formSaveState[data-state=saving]{color:var(--accent)}
+body[data-theme=pastel] .hero{background:linear-gradient(115deg,#e5dcef,#e6efed)}
+body[data-theme]:not([data-theme=original]) .hero{position:relative;isolation:isolate;overflow:hidden;background-color:var(--hero-bg);color:var(--hero-ink)}body[data-theme]:not([data-theme=original]) .hero p{color:var(--hero-ink)}
+body[data-theme=sky] .hero,body[data-theme=sunset] .hero,body[data-theme=night] .hero{background-image:url('assets/theme-aircraft.svg');background-size:cover;background-position:center}
+body[data-theme=night] .hero{background-blend-mode:soft-light}
+}
+#themeDialog{max-width:780px;max-height:90dvh;overflow:auto}#themeTitle{font-size:26px;margin:8px 0}.theme-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:22px 0}.theme-choice{text-align:left;padding:10px;min-width:0}.theme-choice[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:2px}.theme-choice strong{display:block;margin:13px 4px 7px;font-size:14px}.theme-choice small{display:block;margin:0 4px 6px;line-height:1.5;font-size:11px;letter-spacing:0}.theme-preview{position:relative;height:104px;display:block;overflow:hidden;background:var(--preview-bg);border-radius:6px;color:var(--preview-accent)}.theme-preview i{position:absolute;inset:0 auto 0 0;width:20%;background:var(--preview-panel);border-right:1px solid var(--preview-accent)}.theme-preview:after{content:'';position:absolute;left:27%;right:9%;bottom:13%;height:20%;border-radius:4px;background:var(--preview-panel);box-shadow:0 -32px 0 var(--preview-panel)}.theme-preview>span{position:absolute;right:15%;top:3%;font-size:50px;z-index:1;transform:rotate(-15deg)}.theme-preview b{display:none;position:absolute;top:7px;left:7px;z-index:2;background:var(--preview-accent);color:var(--preview-bg);border-radius:50%;padding:3px 6px}.theme-choice[aria-pressed=true] b{display:block}.preview-original{background:linear-gradient(90deg,#06141f99,#06141f22),url('assets/apron.webp') center/cover}.preview-pastel{background:linear-gradient(110deg,#eadff4,#deeee6)}
+@media(max-width:480px){.theme-grid{grid-template-columns:1fr}#themeDialog{padding:18px}.theme-preview{height:85px}}@media print{#themeDialog{display:none!important}}
+@media screen{body[data-theme=original] button.primary,body[data-theme=original] .login-button,body[data-theme=night] button.primary,body[data-theme=night] .login-button{color:#102337}body[data-theme=pastel] #formSaveState[data-state=failed],body[data-theme=sky] #formSaveState[data-state=failed],body[data-theme=sunset] #formSaveState[data-state=failed]{color:#a52635}}
+/* Native lightweight cursor: nose is the click hotspot; no mousemove work. */
+@media screen and (hover:hover) and (pointer:fine){
+body,body *{cursor:var(--cursor-icon,url('assets/chibi-plane-cursor.svg') 10 5),auto}
+body button,body a,body [role=button],body [role=checkbox],body input[type=checkbox],body select{cursor:var(--cursor-icon,url('assets/chibi-plane-cursor.svg') 10 5),pointer}
+body input:not([type=checkbox]):not([type=radio]):not([type=button]):not([type=submit]),body textarea,body [contenteditable=true]{cursor:text}
+body button:disabled,body input:disabled,body select:disabled{cursor:not-allowed}
+body #signatureCanvas{cursor:crosshair}
+}
+#iconDialog{max-width:720px;max-height:90dvh;overflow:auto}#iconTitle{font-size:26px;margin:8px 0}.icon-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:22px 0}.icon-choice{display:flex;align-items:center;flex-direction:column;gap:12px;padding:18px 10px}.icon-choice img{object-fit:contain}.icon-choice strong{font-size:13px}.icon-selected{font-size:10px;color:var(--accent);visibility:hidden}.icon-choice[aria-pressed=true]{outline:2px solid var(--accent);outline-offset:2px}.icon-choice[aria-pressed=true] .icon-selected{visibility:visible}@media(max-width:480px){.icon-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#iconDialog{padding:18px}}@media screen and (hover:hover) and (pointer:fine){body[data-cursor=default] button,body[data-cursor=default] a,body[data-cursor=default] [role=checkbox],body[data-cursor=default] input[type=checkbox],body[data-cursor=default] select{cursor:pointer}body[data-cursor=default] button:disabled{cursor:not-allowed}}@media print{#iconDialog{display:none!important}}
+/* Small, stable plane beside the active cell; never covers typing. */
+.input-flight-effect{position:fixed;width:20px;height:20px;z-index:1000;pointer-events:none!important;user-select:none;contain:layout style}
+.input-flight-effect *{pointer-events:none!important}.input-flight-effect img{position:absolute;inset:0;width:20px;height:20px;animation:flight-hover 1.8s ease-in-out infinite}
+.input-flight-effect i{position:absolute;left:-5px;top:12px;width:6px;height:1px;background:var(--accent,#5b9ba6);opacity:.45;animation:flight-breeze 1.2s ease-out infinite}.input-flight-effect i:nth-child(2){top:16px;width:4px;animation-delay:.4s}
+@keyframes flight-hover{0%,100%{transform:translateY(0) rotate(var(--plane-heading,125deg))}50%{transform:translateY(-1.5px) rotate(var(--plane-heading,125deg))}}@keyframes flight-breeze{0%{opacity:0;transform:translateX(2px)}40%{opacity:.45}100%{opacity:0;transform:translateX(-3px)}}
+@media(prefers-reduced-motion:reduce){.input-flight-effect *{animation:none!important}.input-flight-effect i{display:none}}@media print{.input-flight-effect{display:none!important}}
+
+.input-flight-effect img{transform:rotate(var(--plane-heading,125deg))}

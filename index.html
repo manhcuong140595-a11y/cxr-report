@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="Biểu mẫu chuyến bay dùng chung, phân quyền theo người tạo."
+    />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" href="icons/icon-192.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="CXR Report" />
+    <meta name="theme-color" content="#f7faf9" />
+    <meta name="format-detection" content="telephone=no" />
+    <title>CXR Flight Report</title>
+    <link rel="stylesheet" href="styles.css?v=23-cell-border" />
+    <link rel="stylesheet" href="themes.css?v=23-cell-border" />
+    <link rel="stylesheet" href="mobile.css?v=0.12" />
+  </head>
+  <body>
+    <aside id="sidebar">
+      <div class="brand" id="brand"></div>
+      <small>AIRPORT GROUND OPERATIONS</small>
+      <div class="user">
+        <b class="avatar">C</b>
+        <div>
+          <small>XIN CHÀO,</small><strong id="username"></strong
+          ><small>DỮ LIỆU TRÊN ĐIỆN THOẠI</small>
+        </div>
+      </div>
+      <nav id="nav"></nav>
+      <div class="bottom">
+        <button data-nav="settings">⚙ CÀI ĐẶT</button
+        ><small>BẢN THỬ OFFLINE 0.12</small>
+      </div>
+    </aside>
+    <div id="shell">
+      <header>
+        <button class="mobile" id="menu" aria-label="Mở menu">☰</button
+        ><input
+          type="search"
+          id="globalSearch"
+          placeholder="⌕  TÌM CHUYẾN BAY, SỐ HIỆU, SÂN BAY…"
+          aria-label="Tìm chuyến bay toàn cục"
+        /><button data-nav="notifications" aria-label="Thông báo">♧</button>
+        <div class="identity">
+          <b class="avatar">C</b><strong id="topuser"></strong>
+        </div>
+      </header>
+      <main id="content"></main>
+      <footer>
+        OFFLINE · Lưu trên điện thoại · Không đồng bộ web · Hãy sao lưu JSON.
+      </footer>
+    </div>
+    <dialog id="flightDialog">
+      <form id="flightForm">
+        <div class="row between">
+          <h2 id="dialogTitle">TẠO CHUYẾN BAY</h2>
+          <button type="button" id="closeDialog" aria-label="Đóng">×</button>
+        </div>
+        <div class="grid2" id="flightFields"></div>
+        <label
+          >Ghi chú khai thác<textarea name="notes" rows="3"></textarea>
+        </label>
+        <p class="muted">Hồ sơ chỉ lưu trên điện thoại này.</p>
+        <button class="primary" type="submit">Lưu hồ sơ</button>
+      </form>
+    </dialog>
+    <div id="toast" role="status"></div>
+    <input type="file" hidden id="importFile" accept="application/json" />
+    <script>
+      window.addEventListener("error", (e) => {
+        document.getElementById("content").textContent =
+          "Lỗi khởi tạo: " + e.message;
+      });
+    </script>
+    <script src="web.js"></script>
+    <script src="offline.js"></script>
+    <script src="config.js?v=10-themes"></script>
+    <script src="form-layouts.js?v=23-cell-border"></script>
+    <script src="form-workspace.js?v=23-cell-border"></script>
+    <script src="themes.js?v=23-cell-border"></script>
+    <script src="pdf-export.js?v=0.11"></script>
+    <script src="view-state.js?v=23-cell-border"></script>
+    <script src="app.js?v=23-cell-border"></script>
+    <script src="mobile-geometry.js"></script>
+    <script src="mobile.js"></script>
+  </body>
+</html>

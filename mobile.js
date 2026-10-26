@@ -1,0 +1,878 @@
+// APK-only UI layer (0.3). Không đổi tọa độ ô, dữ liệu hay logic xuất PDF.
+(() => {
+  const G = CXRMobileGeometry;
+  const READABLE_WIDTH = 860; // bề ngang giấy khi đang nhập: chữ ~13px, dễ đọc
+  const EDGE = 6; // lề hai bên khi canh "Vừa ngang"
+
+  // ---------- Icons (Material Symbols, Apache 2.0) ----------
+  const P = {
+    home: "M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z",
+    flight:
+      "M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z",
+    settings:
+      "M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.48.48 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z",
+    back: "M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z",
+    edit: "M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z",
+    info: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm1 15h-2v-6h2zm0-8h-2V7h2z",
+    form: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm2 16H8v-2h8zm0-4H8v-2h8zm-3-5V3.5L18.5 9z",
+    attach:
+      "M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10.5a1 1 0 0 1-2 0V6H10v9.5a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6z",
+    add: "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6z",
+    remove: "M19 13H5v-2h14z",
+    chevron: "M10 6 8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z",
+    prev: "M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z",
+    kbHide:
+      "M20 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm-9 3h2v2h-2zm0 3h2v2h-2zM8 6h2v2H8zm0 3h2v2H8zM7 11H5V9h2zm0-3H5V6h2zm9 6H8v-2h8zm0-3h-2V9h2zm0-3h-2V6h2zm3 3h-2V9h2zm0-3h-2V6h2zm-7 15 4-4H8z",
+    fitW: "M3 5v14h2V5zm16 0v14h2V5zM7.5 12l3 3v-2h3v2l3-3-3-3v2h-3V9z",
+    fitP: "M17 4H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 14H7V6h10z",
+    light:
+      "M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM2 13h2a1 1 0 0 0 0-2H2a1 1 0 0 0 0 2zm18 0h2a1 1 0 0 0 0-2h-2a1 1 0 0 0 0 2zM11 2v2a1 1 0 0 0 2 0V2a1 1 0 0 0-2 0zm0 18v2a1 1 0 0 0 2 0v-2a1 1 0 0 0-2 0zM5.99 4.58a1 1 0 0 0-1.41 1.41l1.06 1.06a1 1 0 0 0 1.41-1.41zm12.37 12.37a1 1 0 0 0-1.41 1.41l1.06 1.06a1 1 0 0 0 1.41-1.41zm1.06-10.96a1 1 0 0 0-1.41-1.41l-1.06 1.06a1 1 0 0 0 1.41 1.41zM7.05 18.36a1 1 0 0 0-1.41-1.41l-1.06 1.06a1 1 0 0 0 1.41 1.41z",
+    dark: "M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z",
+    check: "M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
+    share:
+      "M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11A2.99 2.99 0 1 0 15 5c0 .24.04.47.09.7L8.04 9.81a3 3 0 1 0 0 4.38l7.12 4.16c-.05.21-.08.43-.08.65a2.92 2.92 0 1 0 2.92-2.92z",
+    download: "M5 20h14v-2H5zM19 9h-4V3H9v6H5l7 7z",
+  };
+  const icon = (name, cls = "") =>
+    `<svg class="m3-icon ${cls}" viewBox="0 0 24 24" aria-hidden="true"><path d="${P[name]}"/></svg>`;
+  window.CXRIcon = icon;
+
+  // ---------- Sáng / Tối ----------
+  const SCHEME_KEY = "cxr-mobile-scheme";
+  function scheme() {
+    try {
+      return localStorage.getItem(SCHEME_KEY) === "dark" ? "dark" : "light";
+    } catch {
+      return "light";
+    }
+  }
+  function applyScheme() {
+    document.documentElement.dataset.scheme = scheme();
+    try {
+      window.CXRAndroid?.setScheme?.(scheme() === "dark");
+    } catch {}
+  }
+  applyScheme();
+  // Thay hộp "Chủ đề" (5 theme web) bằng lựa chọn Sáng/Tối kiểu Android.
+  openThemes = function () {
+    let d = document.getElementById("schemeDialog");
+    if (!d) {
+      d = document.createElement("dialog");
+      d.id = "schemeDialog";
+      document.body.appendChild(d);
+    }
+    const cur = scheme();
+    d.innerHTML = `<h2>Giao diện</h2><p class="muted">Mẫu giấy luôn giữ nền trắng để dễ đọc và in.</p><div class="scheme-options">${[
+      ["light", "Sáng", "light"],
+      ["dark", "Tối", "dark"],
+    ]
+      .map(
+        ([v, t, ic]) =>
+          `<button type="button" data-scheme="${v}" aria-pressed="${cur === v}">${icon(ic)}<span>${t}</span>${cur === v ? icon("check", "tick") : ""}</button>`,
+      )
+      .join(
+        "",
+      )}</div><div class="dialog-actions"><button type="button" class="text-btn" data-close>Xong</button></div>`;
+    d.onclick = (e) => {
+      const b = e.target.closest("button");
+      if (e.target === d || b?.hasAttribute("data-close")) return d.close();
+      if (b?.dataset.scheme) {
+        try {
+          localStorage.setItem(SCHEME_KEY, b.dataset.scheme);
+        } catch {}
+        applyScheme();
+        openThemes();
+        if (page === "settings" && !selected) render();
+      }
+    };
+    if (!d.open) d.showModal();
+  };
+
+  // ---------- Thanh điều hướng & thanh nhập ----------
+  let input = null,
+    paperWidth = 0,
+    frame = 0,
+    pinch = null,
+    fitMode = "content", // "content" | "page" | null (người dùng tự zoom)
+    bounds = { left: 0, right: 1 },
+    beforeTyping = null;
+  const boundsCache = new Map();
+
+  const bar = document.createElement("div");
+  bar.id = "mobile-entry-nav";
+  bar.hidden = true;
+  bar.innerHTML = `<span class="mobile-field-label"></span><div class="mobile-entry-buttons"><button type="button" data-key="Previous" aria-label="Ô trước">${icon("prev")}</button><button type="button" data-key="Enter">Tiếp <kbd>↵</kbd></button><button type="button" data-key="Tab">Đổi cột <kbd>⇥</kbd></button>${[0, 2, 3, 5, 10].map((n) => `<button type="button" class="time-chip" data-add="${n}" aria-label="Mốc cộng ${n} phút">+${n}</button>`).join("")}<button type="button" data-key="Close" aria-label="Ẩn bàn phím">${icon("kbHide")}</button></div>`;
+  document.body.appendChild(bar);
+
+  const nav = document.createElement("nav");
+  nav.id = "mobile-main-nav";
+  nav.setAttribute("aria-label", "Điều hướng chính");
+  nav.innerHTML = [
+    ["home", "Trang chủ", "home"],
+    ["myflight", "Chuyến bay", "flight"],
+    ["settings", "Cài đặt", "settings"],
+  ]
+    .map(
+      ([p, t, ic]) =>
+        `<button data-page="${p}"><span class="pill">${icon(ic)}</span>${t}</button>`,
+    )
+    .join("");
+  document.body.appendChild(nav);
+  nav.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (b) go(b.dataset.page);
+  });
+
+  // Mở một chuyến bay (mới hoặc cũ) → mặc định hiện mẫu FSAGS 42.3.
+  const DEFAULT_TEMPLATE = "fsags42.3",
+    BBBT = "bbbt";
+  let lastNonBbbt = null;
+  let lastSelected; // undefined = lần render đầu (giữ mẫu khôi phục sau khi mở lại app)
+  const oldRender = render;
+  render = function () {
+    if (lastSelected !== undefined && selected && selected !== lastSelected) {
+      if (templateList().some((t) => t.id === DEFAULT_TEMPLATE)) {
+        templateId = DEFAULT_TEMPLATE;
+        formPage = 0;
+      }
+    }
+    lastSelected = selected || null;
+    input = null;
+    bar.hidden = true;
+    document.body.classList.remove("mobile-typing", "mobile-form-open");
+    oldRender();
+    document.body.classList.toggle("mobile-detail", !!selected);
+    nav
+      .querySelectorAll("button")
+      .forEach((b) => b.classList.toggle("active", b.dataset.page === page));
+    const ph = document.querySelector("#content > .pagehead");
+    if (ph && !selected) ph.classList.add("m3-large-title");
+    const tb = document.querySelector('#content [data-nav="themes"]');
+    if (tb) {
+      tb.innerHTML = `${icon(scheme() === "dark" ? "dark" : "light")}<span>Giao diện: ${scheme() === "dark" ? "Tối" : "Sáng"}</span>`;
+      tb.classList.add("scheme-btn");
+    }
+  };
+
+  // App bar gọn cho trang chi tiết: ← | số hiệu + ngày | sửa | tab dạng icon
+  const TAB_ICON = { info: "info", forms: "form", files: "attach" };
+  const TAB_SHORT = { info: "Thông tin", forms: "Biểu mẫu", files: "Tài liệu" };
+  function compactDetailHeader() {
+    const ph = document.querySelector("#content > .pagehead");
+    if (!ph || ph.dataset.m3) return;
+    ph.dataset.m3 = "1";
+    ph.classList.add("m3-appbar");
+    const back = $("back"),
+      edit = $("editFlight"),
+      tabs = document.querySelector("#content > .tabs");
+    if (back) {
+      // Nút đầu thanh = Trang chủ (vuốt/nút Back của Android vẫn về danh sách).
+      back.innerHTML = icon("home");
+      back.setAttribute("aria-label", "Về trang chủ");
+      back.title = "Trang chủ";
+      back.classList.add("icon-btn", "home-btn");
+      back.onclick = () => go("home");
+      ph.prepend(back);
+    }
+    if (edit) {
+      edit.innerHTML = icon("edit");
+      edit.setAttribute("aria-label", "Sửa thông tin chuyến");
+      edit.classList.add("icon-btn");
+    }
+    if (tabs) {
+      tabs.classList.add("m3-segmented");
+      tabs.querySelectorAll("button").forEach((b) => {
+        const k = b.dataset.tab;
+        b.setAttribute("aria-label", TAB_SHORT[k] || b.textContent);
+        b.innerHTML = `${icon(TAB_ICON[k] || "info")}<span>${TAB_SHORT[k] || b.textContent}</span>`;
+      });
+      ph.appendChild(tabs);
+    }
+    if (edit) ph.appendChild(edit);
+  }
+
+  const oldDetail = renderDetail;
+  renderDetail = function () {
+    document.body.classList.toggle("mobile-form-open", tabName === "forms");
+    document.body.classList.add("mobile-detail");
+    document.body.classList.remove("mobile-typing");
+    bar.hidden = true;
+    input = null;
+    oldDetail();
+    compactDetailHeader();
+    layout();
+  };
+
+  table = function (rows) {
+    return rows.length
+      ? '<div class="flight-cards">' +
+          rows
+            .map(
+              (x) =>
+                `<button class="flight-card" data-open="${escape(x.id)}"><span class="flight-badge">${icon("flight")}</span><span class="flight-main"><strong>${escape(x.flight)}</strong><span class="flight-route">${escape(x.route || "Chưa nhập đường bay")}</span><small>${escape(x.date)} · ${escape(x.reg || "Chưa nhập đăng ký tàu")}</small></span>${icon("chevron", "flight-arrow")}</button>`,
+            )
+            .join("") +
+          "</div>"
+      : empty("Chưa có chuyến bay. Bấm “Tạo chuyến bay” để bắt đầu.");
+  };
+
+  renderHome = function () {
+    const recent = [...flights]
+      .sort((a, b) =>
+        (b.updatedAt || b.date).localeCompare(a.updatedAt || a.date),
+      )
+      .slice(0, 6);
+    const todayCount = flights.filter((x) => x.date === today()).length;
+    $("content").innerHTML =
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.12 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+    $("createFlight").onclick = () => openEditor();
+    $("allFlights").onclick = () => {
+      go("myflight");
+      dayFilter = "";
+      $("filterDate").value = "";
+      updateResults();
+    };
+    bindOpen();
+  };
+
+  // ---------- Biểu mẫu: canh vừa ngang theo nội dung ----------
+  const oldForms = renderForms;
+  renderForms = function (f) {
+    oldForms(f);
+    setupCompleteButton();
+    prewarmPdf();
+    pdfCache = null;
+    schedulePrerender(2500);
+    document.body.classList.add("mobile-form-open");
+    document.body.classList.remove("mobile-typing");
+    input = null;
+    bar.hidden = true;
+    beforeTyping = null;
+    const tools = $("templateSelect").parentElement;
+    const zoom = document.createElement("div");
+    zoom.className = "mobile-zoom";
+    zoom.innerHTML = `<button type="button" data-zoom="out" aria-label="Thu nhỏ">${icon("remove")}</button><button type="button" data-zoom="fit" class="fit-toggle"></button><button type="button" data-zoom="in" aria-label="Phóng to">${icon("add")}</button>`;
+    tools.appendChild(zoom);
+    // Nút Trang chủ ở đầu hàng chọn mẫu — chỉ hiện khi đang nhập (lúc đó thanh tiêu đề ẩn).
+    const home = document.createElement("button");
+    home.type = "button";
+    home.className = "icon-btn home-btn tools-home";
+    home.setAttribute("aria-label", "Về trang chủ");
+    home.title = "Trang chủ";
+    home.innerHTML = icon("home");
+    home.addEventListener("pointerdown", (e) => e.preventDefault());
+    home.onclick = () => {
+      input?.blur(); // ô đang nhập tự lưu khi rời ô
+      setTimeout(() => go("home"), 150);
+    };
+    tools.prepend(home);
+    // Nút cố định BBBT cạnh ô chọn mẫu: bấm → BBBT, bấm lại → về mẫu trước đó.
+    const sel = $("templateSelect");
+    if (sel && templateList().some((t) => t.id === BBBT)) {
+      if (templateId !== BBBT) lastNonBbbt = templateId;
+      const bb = document.createElement("button");
+      bb.type = "button";
+      bb.className = "bbbt-btn" + (templateId === BBBT ? " active" : "");
+      bb.textContent = "BBBT";
+      bb.setAttribute("aria-pressed", String(templateId === BBBT));
+      bb.setAttribute("aria-label", templateId === BBBT ? "Quay lại mẫu trước" : "Mở biên bản bất thường BBBT");
+      bb.addEventListener("pointerdown", (e) => e.preventDefault());
+      bb.onclick = () => {
+        input?.blur();
+        const next = templateId === BBBT ? lastNonBbbt || DEFAULT_TEMPLATE : BBBT;
+        if (!templateList().some((t) => t.id === next)) return;
+        sel.value = next;
+        sel.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      sel.after(bb);
+    }
+    // Màn hẹp: bỏ chữ "FSAGS" trong tên mẫu cho đủ chỗ (vd "42.3").
+    if (sel && innerWidth < 400)
+      sel.querySelectorAll("option").forEach((o) => {
+        o.textContent = o.textContent.replace(/^FSAGS\s*/i, "");
+      });
+    zoom.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("button") && input) e.preventDefault();
+    });
+    zoom.addEventListener("click", (e) => {
+      const action = e.target.closest("button")?.dataset.zoom;
+      if (!action) return;
+      if (action === "fit") {
+        input?.blur();
+        applyFit(fitMode === "content" ? "page" : "content");
+      } else {
+        fitMode = null;
+        if (beforeTyping) beforeTyping.manual = true;
+        setWidth(
+          G.clamp(
+            paperWidth * (action === "in" ? 1.3 : 1 / 1.3),
+            pageWidth(),
+            1800,
+          ),
+        );
+        updateFitButton();
+        if (input) centerInput();
+      }
+    });
+    const canvas = $("canvas");
+    canvas.addEventListener("touchstart", pinchStart, { passive: true });
+    canvas.addEventListener("touchmove", pinchMove, { passive: false });
+    canvas.addEventListener("touchend", () => (pinch = null), {
+      passive: true,
+    });
+    canvas.addEventListener("dblclick", (e) => {
+      if (e.target.closest(".paper-input")) return;
+      applyFit(fitMode === "content" ? "page" : "content");
+    });
+    document
+      .querySelectorAll(".paper-input")
+      .forEach((el) => el.setAttribute("enterkeyhint", "next"));
+    // Áp dụng ngay theo cache (không nháy), sau đó đo ảnh thật.
+    const key = templateKey();
+    bounds = boundsCache.get(key) || G.unionBounds([], formFields());
+    applyFit(fitMode || "content");
+    measureBounds(key);
+    layout();
+  };
+
+  // Nút "Hoàn tất" (thay "Lưu nháp"; dữ liệu vẫn tự lưu khi nhập).
+  function isCompleted() {
+    return !!active()?.completedForms?.[templateId];
+  }
+  function refreshCompleteButton() {
+    const b = $("saveValues");
+    if (!b) return;
+    const done = isCompleted();
+    b.classList.toggle("is-done", done);
+    b.innerHTML = done
+      ? `${icon("check")}<span>Đã hoàn tất</span>`
+      : `${icon("check")}<span>Hoàn tất</span>`;
+    b.setAttribute("aria-label", done ? "Biểu mẫu đã hoàn tất" : "Hoàn tất biểu mẫu");
+  }
+  function setupCompleteButton() {
+    const pf = $("printForm");
+    if (pf) pf.innerHTML = `${icon("share")}<span>Xuất PDF</span>`;
+    const b = $("saveValues");
+    if (!b) return;
+    b.onclick = async () => {
+      document.activeElement?.blur?.();
+      b.disabled = true;
+      try {
+        await completeCurrentForm();
+      } catch (e) {
+        notice(e.message || "Không hoàn tất được");
+      } finally {
+        b.disabled = !canEdit(active());
+        refreshCompleteButton();
+      }
+    };
+    refreshCompleteButton();
+    // Sửa số liệu sau khi hoàn tất sẽ đưa mẫu về bản nháp → cập nhật nhãn nút.
+    const st = $("formSaveState");
+    if (st) new MutationObserver(refreshCompleteButton).observe(st, { childList: true, characterData: true, subtree: true, attributes: true });
+  }
+
+  // ---------- Xuất PDF nhanh hơn ----------
+  // 1.5x ≈ 225 DPI trên A4 (đủ nét khi in), JPEG 92%: ~1/2 dung lượng, vẽ + nén nhanh hơn ~2x.
+  window.CXR_PDF_SCALE = 1.5;
+  window.CXR_PDF_QUALITY = 0.92;
+  // Tạo sẵn PDF ở nền khi người dùng ngừng nhập → bấm Xuất là chia sẻ ngay.
+  // Khóa cache = mẫu + giá trị hiển thị của mọi ô (kể cả giá trị mặc định) + số hiệu/ngày.
+  let pdfCache = null, // { key, blob, name }
+    pdfJob = null, // { key, promise }
+    prerenderTimer = 0;
+  function pdfKey(f) {
+    try {
+      return (
+        templateId + "|" + f.flight + "|" + f.date + "|" +
+        JSON.stringify(formFields(templateId).map((x) => formValue(f, x) ?? ""))
+      );
+    } catch {
+      return null;
+    }
+  }
+  function buildPdf(f, key) {
+    if (pdfJob && pdfJob.key === key) return pdfJob.promise;
+    const flight = structuredClone(f),
+      tpl = templateList().find((x) => x.id === templateId),
+      fields = formFields(templateId);
+    const promise = (async () => {
+      await document.fonts.ready;
+      const pages = await Promise.all(
+        Array.from({ length: tpl.pages }, (_, i) => renderReportPage(flight, tpl, fields, i)),
+      );
+      const out = {
+        key,
+        blob: reportPdfBytes(pages),
+        name: `${flight.flight || "CXR"}_${flight.date || ""}_${tpl.id}.pdf`.replace(/[\\/:*?"<>|]/g, "-"),
+      };
+      if (key) pdfCache = out;
+      return out;
+    })().finally(() => {
+      if (pdfJob?.promise === promise) pdfJob = null;
+    });
+    pdfJob = { key, promise };
+    return promise;
+  }
+  function schedulePrerender(delay = 1500) {
+    clearTimeout(prerenderTimer);
+    prerenderTimer = setTimeout(() => {
+      if (!document.body.classList.contains("mobile-form-open") || input || document.hidden) return;
+      const f = active();
+      if (!f) return;
+      // Còn số vừa gõ chưa ghi xong → đợi, tránh cache PDF thiếu số mới nhất.
+      if ([...inlineDrafts.values()].some((x) => x.flightId === f.id)) return schedulePrerender(1000);
+      const key = pdfKey(f);
+      if (!key || pdfCache?.key === key || pdfJob?.key === key) return;
+      buildPdf(f, key).catch(() => {});
+    }, delay);
+  }
+  function shareBlob(blob, name) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => {
+        const data = String(r.result).split(",")[1];
+        window.CXRExportSheet(name, "application/pdf", data);
+        resolve();
+      };
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(blob);
+    });
+  }
+  exportCurrentReportPdf = async function () {
+    const button = $("printForm");
+    if (!button || button.disabled) return;
+    button.disabled = true;
+    const html = button.innerHTML;
+    button.innerHTML = `<span class="spin"></span><span>Đang tạo PDF…</span>`;
+    try {
+      await flushInlineDrafts(); // lấy số vừa gõ
+      const f = active(),
+        key = pdfKey(f);
+      // Lưu giá trị mặc định của mẫu ở nền (không ảnh hưởng nội dung PDF).
+      if (canEdit(f)) persistFormDefaults().catch(() => {});
+      const out = key && pdfCache?.key === key ? pdfCache : await buildPdf(f, key);
+      await shareBlob(out.blob, out.name);
+    } catch (error) {
+      notice("XUẤT PDF THẤT BẠI: " + error.message);
+    } finally {
+      button.disabled = false;
+      button.innerHTML = html;
+    }
+  };
+  // Giải mã sẵn ảnh mẫu khi rảnh để lần xuất đầu không phải chờ.
+  function prewarmPdf() {
+    const run = () => {
+      document.querySelectorAll(".paper img").forEach((img) => {
+        const i = new Image();
+        i.src = img.getAttribute("src");
+        i.decode?.().catch(() => {});
+      });
+      document.fonts?.ready;
+    };
+    (window.requestIdleCallback || ((f) => setTimeout(f, 800)))(run);
+  }
+
+  // ---------- Xuất file: mở thẳng bảng chia sẻ của Android ----------
+  // (Bảng chia sẻ đã có sẵn Drive / Files… nếu muốn lưu lại.)
+  window.CXRExportSheet = function (name, mime, data) {
+    const bridge = window.CXRAndroid;
+    try {
+      if (typeof bridge?.share === "function") bridge.share(name, mime, data);
+      else bridge.save(name, mime, data); // APK cũ chưa có chia sẻ
+    } catch (err) {
+      notice("Không xuất được file: " + err.message);
+    }
+  };
+
+  function templateKey() {
+    return [...document.querySelectorAll(".paper img")]
+      .map((i) => i.getAttribute("src"))
+      .join("|");
+  }
+  function imageBounds(img) {
+    try {
+      const w = 320,
+        h = Math.max(1, Math.round((img.naturalHeight / img.naturalWidth) * w));
+      const c = document.createElement("canvas");
+      c.width = w;
+      c.height = h;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, w, h);
+      const d = ctx.getImageData(0, 0, w, h).data;
+      let left = w,
+        right = -1;
+      for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++) {
+          const i = (y * w + x) * 4;
+          if (d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11 < 200) {
+            if (x < left) left = x;
+            if (x > right) right = x;
+          }
+        }
+      return right < 0 ? null : { left: left / w, right: (right + 1) / w };
+    } catch {
+      return null; // ảnh không đọc được pixel → giữ toàn trang
+    }
+  }
+  function measureBounds(key) {
+    const imgs = [...document.querySelectorAll(".paper img")];
+    Promise.all(
+      imgs.map((img) =>
+        img.complete && img.naturalWidth
+          ? Promise.resolve(img)
+          : new Promise((r) => {
+              img.addEventListener("load", () => r(img), { once: true });
+              img.addEventListener("error", () => r(null), { once: true });
+            }),
+      ),
+    ).then((loaded) => {
+      if (key !== templateKey()) return;
+      const b = G.unionBounds(
+        loaded.map((img) => (img ? imageBounds(img) : { left: 0, right: 1 })),
+        formFields(),
+      );
+      boundsCache.set(key, b);
+      const changed =
+        Math.abs(b.left - bounds.left) > 0.002 ||
+        Math.abs(b.right - bounds.right) > 0.002;
+      bounds = b;
+      if (changed && fitMode && !input) applyFit(fitMode);
+    });
+  }
+  function canvasWidth() {
+    return $("canvas")?.clientWidth || innerWidth;
+  }
+  function pageWidth() {
+    return Math.max(250, canvasWidth() - 2 * EDGE);
+  }
+  function applyFit(mode) {
+    const canvas = $("canvas");
+    if (!canvas) return;
+    fitMode = mode;
+    if (mode === "content") {
+      const fit = G.contentFit(canvasWidth(), bounds.left, bounds.right, EDGE);
+      setWidth(fit.width);
+      canvas.scrollLeft = fit.scrollLeft;
+    } else {
+      setWidth(pageWidth());
+      canvas.scrollLeft = 0;
+    }
+    updateFitButton();
+  }
+  function updateFitButton() {
+    const b = document.querySelector(".fit-toggle");
+    if (!b) return;
+    const toPage = fitMode === "content";
+    b.innerHTML = icon(toPage ? "fitP" : "fitW");
+    b.title = toPage ? "Cả trang" : "Vừa ngang";
+    b.setAttribute(
+      "aria-label",
+      toPage ? "Xem cả trang giấy" : "Phóng vừa bề ngang",
+    );
+  }
+  function setWidth(width) {
+    paperWidth = width;
+    document
+      .querySelectorAll(".paper")
+      .forEach((p) => (p.style.width = width + "px"));
+  }
+  function layout() {
+    const v = window.visualViewport;
+    document.documentElement.style.setProperty(
+      "--mobile-height",
+      (v ? v.height : innerHeight) + "px",
+    );
+    if (!bar.hidden) {
+      bar.style.top =
+        (v ? v.offsetTop + v.height : innerHeight) - bar.offsetHeight + "px";
+      scheduleCenter();
+    }
+  }
+  function centerInput() {
+    if (!input?.isConnected || document.activeElement !== input) return;
+    const canvas = $("canvas");
+    if (!canvas) return;
+    const rect = input.getBoundingClientRect(),
+      box = canvas.getBoundingClientRect(),
+      bottom = Math.min(box.bottom, bar.getBoundingClientRect().top - 12);
+    const available = Math.max(40, bottom - box.top);
+    canvas.scrollLeft = G.centeredScroll(
+      canvas.scrollLeft,
+      rect.left,
+      rect.width,
+      box.left,
+      box.width,
+    );
+    canvas.scrollTop = G.centeredScroll(
+      canvas.scrollTop,
+      rect.top,
+      rect.height,
+      box.top,
+      available,
+    );
+  }
+  function scheduleCenter() {
+    cancelAnimationFrame(frame);
+    frame = requestAnimationFrame(centerInput);
+  }
+
+  // ---------- Gợi ý giờ +0 +2 +3 +5 +10 ----------
+  // +N = giờ hiện tại của điện thoại cộng thêm N phút.
+  const parseHM = (v) => {
+    const m = /^(\d{1,2}):?(\d{2})$/.exec(String(v || "").trim());
+    if (!m || +m[1] > 23 || +m[2] > 59) return null;
+    return +m[1] * 60 + +m[2];
+  };
+  const fmtHM = (min) => {
+    min = ((min % 1440) + 1440) % 1440;
+    return String(Math.floor(min / 60)).padStart(2, "0") + ":" + String(min % 60).padStart(2, "0");
+  };
+  window.CXRTime = { parseHM, fmtHM };
+  const nowMin = () => {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  };
+  let clockTimer = 0,
+    baseLabel = "";
+  function updateClockLabel() {
+    const el = bar.querySelector(".mobile-field-label");
+    if (!bar.classList.contains("time-mode") || bar.hidden) return;
+    const now = nowMin();
+    el.textContent = `${baseLabel} · Bây giờ ${fmtHM(now)}`;
+    bar.querySelectorAll(".time-chip").forEach((c) => {
+      c.innerHTML = `<b>+${c.dataset.add}</b><small>${fmtHM(now + +c.dataset.add)}</small>`;
+    });
+  }
+  function startClock(on) {
+    clearInterval(clockTimer);
+    if (on) clockTimer = setInterval(updateClockLabel, 5000);
+  }
+
+  // ---------- Khung nhập ôm đúng ô kẻ đen trên mẫu ----------
+  const darkCache = new Map(),
+    cellCache = new Map();
+  function darkMap(img) {
+    const key = img.currentSrc || img.src;
+    if (darkCache.has(key)) return darkCache.get(key);
+    let map = null;
+    try {
+      const W = img.naturalWidth,
+        H = img.naturalHeight;
+      const c = document.createElement("canvas");
+      c.width = W;
+      c.height = H;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0);
+      const d = ctx.getImageData(0, 0, W, H).data,
+        dark = new Uint8Array(W * H);
+      for (let i = 0, j = 0; j < dark.length; i += 4, j++)
+        dark[j] = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11 < 128 ? 1 : 0;
+      map = { dark, W, H };
+    } catch {}
+    darkCache.set(key, map);
+    return map;
+  }
+  function fitCellFrame(inp) {
+    const el = inp.closest(".inline-field"),
+      paper = inp.closest(".paper"),
+      img = paper?.querySelector("img");
+    if (!el || !img?.naturalWidth) return;
+    const key = templateKey() + "#" + el.dataset.field;
+    let cell = cellCache.get(key);
+    if (cell === undefined) {
+      cell = null;
+      const map = darkMap(img);
+      if (map) {
+        const pr = paper.getBoundingClientRect(),
+          fr = el.getBoundingClientRect(),
+          sx = map.W / pr.width,
+          sy = map.H / pr.height;
+        const f = {
+          x0: (fr.left - pr.left) / pr.width,
+          y0: (fr.top - pr.top) / pr.height,
+          w: fr.width / pr.width,
+          h: fr.height / pr.height,
+        };
+        const c = G.findCell(map.dark, map.W, map.H, {
+          x0: (fr.left - pr.left) * sx,
+          x1: (fr.right - pr.left) * sx,
+          y0: (fr.top - pr.top) * sy,
+          y1: (fr.bottom - pr.top) * sy,
+        });
+        // Ô kẻ chứa nhiều trường (ROUTE …/…/…, PAX TTL/C/Y/I, STA/ETA):
+        // giữ cạnh trên/dưới theo đường kẻ, bề ngang chỉ ôm trường đang nhập.
+        if (c) {
+          const shared = [...paper.querySelectorAll(".inline-field")].some((o) => {
+            if (o === el) return false;
+            const r = o.getBoundingClientRect();
+            if (r.width < 2 || r.height < 2) return false;
+            const ox = ((r.left + r.right) / 2 - pr.left) * sx,
+              oy = ((r.top + r.bottom) / 2 - pr.top) * sy;
+            return ox > c.left && ox < c.right && oy > c.top && oy < c.bottom;
+          });
+          if (shared) {
+            c.left = (fr.left - pr.left) * sx;
+            c.right = (fr.right - pr.left) * sx;
+          }
+        }
+        if (c && f.w > 0 && f.h > 0)
+          cell = {
+            l: ((c.left / map.W - f.x0) / f.w) * 100,
+            t: ((c.top / map.H - f.y0) / f.h) * 100,
+            w: (((c.right - c.left) / map.W) / f.w) * 100,
+            h: (((c.bottom - c.top) / map.H) / f.h) * 100,
+          };
+      }
+      cellCache.set(key, cell);
+    }
+    el.classList.toggle("cell-fit", !!cell);
+    if (cell)
+      for (const k of ["l", "t", "w", "h"])
+        el.style.setProperty("--cell-" + k, cell[k].toFixed(3) + "%");
+  }
+
+  document.addEventListener("focusin", (e) => {
+    if (!e.target.matches(".paper-input")) return;
+    if (!input && !beforeTyping)
+      beforeTyping = { mode: fitMode, width: paperWidth, manual: false };
+    input = e.target;
+    bar.hidden = false;
+    document.body.classList.add("mobile-typing");
+    const field = formFields().find(
+      (x) => x.id === input.closest("[data-field]").dataset.field,
+    );
+    bar.querySelector(".mobile-field-label").textContent =
+      `Trang ${(field?.page || 0) + 1} · ${field?.label || input.getAttribute("aria-label")}`;
+    fitCellFrame(input);
+    const isTime = !!field && fieldNumericKind(field) === "time";
+    bar.classList.toggle("time-mode", isTime);
+    baseLabel = bar.querySelector(".mobile-field-label").textContent;
+    updateClockLabel();
+    startClock(isTime);
+    if (paperWidth < READABLE_WIDTH) {
+      setWidth(READABLE_WIDTH);
+      fitMode = null;
+      updateFitButton();
+    }
+    layout();
+    scheduleCenter();
+  });
+  document.addEventListener("focusout", () =>
+    setTimeout(() => {
+      if (document.activeElement?.matches(".paper-input")) return;
+      const last = input;
+      input = null;
+      bar.hidden = true;
+      startClock(false);
+      document.body.classList.remove("mobile-typing");
+      layout();
+      restoreAfterTyping(last);
+      schedulePrerender();
+    }, 0),
+  );
+  // Ẩn phím → trả về mức xem trước khi nhập (nếu người dùng không tự zoom),
+  // giữ ô vừa nhập trong tầm nhìn.
+  function restoreAfterTyping(last) {
+    const prev = beforeTyping;
+    beforeTyping = null;
+    const canvas = $("canvas");
+    if (!prev || prev.manual || !canvas || !last?.isConnected) return;
+    requestAnimationFrame(() => {
+      const r0 = last.getBoundingClientRect(),
+        box = canvas.getBoundingClientRect();
+      const ratio = paperWidth;
+      if (prev.mode) applyFit(prev.mode);
+      else setWidth(prev.width);
+      const k = paperWidth / ratio;
+      canvas.scrollTop = Math.max(
+        0,
+        (canvas.scrollTop + r0.top - box.top) * k - box.height / 3,
+      );
+    });
+  }
+
+  bar.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button")) e.preventDefault();
+  });
+  bar.addEventListener("click", (e) => {
+    const chip = e.target.closest("button[data-add]");
+    if (chip && input) {
+      input.value = fmtHM(nowMin() + +chip.dataset.add);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }),
+      );
+      layout();
+      return;
+    }
+    const key = e.target.closest("button")?.dataset.key;
+    if (!key || !input) return;
+    if (key === "Close") {
+      input.blur();
+      return;
+    }
+    if (key === "Previous") {
+      const all = [...document.querySelectorAll(".paper-input")],
+        i = all.indexOf(input);
+      if (i > 0) {
+        input.blur();
+        all[i - 1].focus({ preventScroll: true });
+      }
+    } else
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }),
+      );
+    layout();
+  });
+
+  function pinchStart(e) {
+    if (e.touches.length !== 2) return;
+    const canvas = $("canvas"),
+      r = canvas.getBoundingClientRect();
+    pinch = {
+      width: paperWidth,
+      distance: Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      ),
+      x: (e.touches[0].clientX + e.touches[1].clientX) / 2 - r.left,
+      y: (e.touches[0].clientY + e.touches[1].clientY) / 2 - r.top,
+      left: canvas.scrollLeft,
+      top: canvas.scrollTop,
+    };
+  }
+  function pinchMove(e) {
+    if (!pinch || e.touches.length !== 2) return;
+    e.preventDefault();
+    const canvas = $("canvas"),
+      d = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY,
+      ),
+      width = G.pinchWidth(pinch.width, d, pinch.distance, pageWidth()),
+      ratio = width / pinch.width;
+    fitMode = null;
+    if (beforeTyping) beforeTyping.manual = true;
+    setWidth(width);
+    updateFitButton();
+    canvas.scrollLeft = (pinch.left + pinch.x) * ratio - pinch.x;
+    canvas.scrollTop = (pinch.top + pinch.y) * ratio - pinch.y;
+  }
+
+  // Xoay màn hình / đổi kích thước: canh lại nếu đang ở chế độ vừa khung.
+  let lastCanvasW = 0;
+  function onResize() {
+    layout();
+    const w = $("canvas")?.clientWidth;
+    if (w && w !== lastCanvasW) {
+      lastCanvasW = w;
+      if (fitMode && !input && document.body.classList.contains("mobile-form-open"))
+        applyFit(fitMode);
+    }
+  }
+  window.visualViewport?.addEventListener("resize", onResize);
+  window.visualViewport?.addEventListener("scroll", layout);
+  window.addEventListener("resize", onResize);
+  layout();
+})();
