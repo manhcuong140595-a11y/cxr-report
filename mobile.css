@@ -1410,3 +1410,41 @@ body[data-theme] #flightForm .dialog-footer .footer-save,
 #flightFields label:has(> input[name="date"]) {
   grid-column: 1 / -1;
 }
+/* Ô chọn mẫu 2 vùng: chữ = về mẫu đó, mũi tên = mở danh sách */
+.mobile-form-open .tools .tpl-picker {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+.mobile-form-open .tools .tpl-picker #templateSelect {
+  flex: 1;
+}
+body[data-theme] .mobile-form-open .tools .tpl-go,
+.mobile-form-open .tools .tpl-go {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  right: 40px; /* chừa vùng mũi tên cho ô chọn gốc */
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 12px 0 0 12px;
+  background: transparent;
+  flex: none !important;
+}
+.mobile-form-open .tools .tpl-go:active {
+  background: #0000000f;
+}
+/* Vạch ngăn mờ giữa vùng chữ và vùng mũi tên */
+.mobile-form-open .tools .tpl-picker::after {
+  content: "";
+  position: absolute;
+  right: 40px;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  background: var(--md-outline-variant);
+  pointer-events: none;
+}

@@ -227,7 +227,7 @@
       .slice(0, 6);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.15 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.16 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -369,6 +369,21 @@
         sel.value = back;
         sel.classList.add("on-bbbt");
       }
+      // Chia ô chọn làm 2 vùng: bấm CHỮ (vd "42.3") → về thẳng mẫu đó; bấm MŨI TÊN ⌄ → mở danh sách đổi mẫu.
+      const pick = document.createElement("div");
+      pick.className = "tpl-picker";
+      sel.before(pick);
+      pick.appendChild(sel);
+      const go = document.createElement("button");
+      go.type = "button";
+      go.className = "tpl-go";
+      go.setAttribute("aria-label", "Về mẫu " + (sel.options[sel.selectedIndex]?.text || ""));
+      go.addEventListener("pointerdown", (e) => e.preventDefault());
+      go.onclick = () => {
+        input?.blur();
+        if (sel.value && sel.value !== templateId) sel.dispatchEvent(new Event("change", { bubbles: true }));
+      };
+      pick.appendChild(go);
     }
     zoom.addEventListener("pointerdown", (e) => {
       if (e.target.closest("button") && input) e.preventDefault();
