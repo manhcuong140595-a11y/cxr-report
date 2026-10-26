@@ -140,6 +140,9 @@
     input = null;
     bar.hidden = true;
     document.body.classList.remove("mobile-typing", "mobile-form-open");
+    const content = $("content");
+    if (content) content.style.height = "";
+    lastMobileH = -1;
     oldRender();
     document.body.classList.toggle("mobile-detail", !!selected);
     nav
@@ -224,7 +227,7 @@
       .slice(0, 6);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.12 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.13 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -316,7 +319,8 @@
     });
     const canvas = $("canvas");
     canvas.addEventListener("touchstart", pinchStart, { passive: true });
-    canvas.addEventListener("touchmove", pinchMove, { passive: false });
+    // passive: Chrome điện thoại cuộn ngay, không chờ JS (CSS touch-action đã chặn zoom trang).
+    canvas.addEventListener("touchmove", pinchMove, { passive: true });
     canvas.addEventListener("touchend", () => (pinch = null), {
       passive: true,
     });
@@ -414,9 +418,10 @@
     pdfJob = { key, promise };
     return promise;
   }
-  function schedulePrerender(delay = 1500) {
+  const whenIdle = (f) => (window.requestIdleCallback ? requestIdleCallback(f, { timeout: 4000 }) : setTimeout(f, 0));
+  function schedulePrerender(delay = 2500) {
     clearTimeout(prerenderTimer);
-    prerenderTimer = setTimeout(() => {
+    prerenderTimer = setTimeout(() => whenIdle(() => {
       if (!document.body.classList.contains("mobile-form-open") || input || document.hidden) return;
       const f = active();
       if (!f) return;
@@ -425,7 +430,7 @@
       const key = pdfKey(f);
       if (!key || pdfCache?.key === key || pdfJob?.key === key) return;
       buildPdf(f, key).catch(() => {});
-    }, delay);
+    }), delay);
   }
   function shareBlob(blob, name) {
     return new Promise((resolve, reject) => {
@@ -577,12 +582,32 @@
       .querySelectorAll(".paper")
       .forEach((p) => (p.style.width = width + "px"));
   }
+  let lastMobileH = -1,
+    layoutFrame = 0;
   function layout() {
-    const v = window.visualViewport;
-    document.documentElement.style.setProperty(
-      "--mobile-height",
-      (v ? v.height : innerHeight) + "px",
-    );
+    // Thanh địa chỉ Chrome ẩn/hiện bắn resize liên tục → gom về 1 lần mỗi khung hình.
+    if (layoutFrame) return;
+    layoutFrame = requestAnimationFrame(() => {
+      layoutFrame = 0;
+      doLayout();
+    });
+  }
+  function doLayout() {
+    const v = window.visualViewport,
+      h = Math.round(v ? v.height : innerHeight);
+    // Gán thẳng chiều cao cho #content (thuộc tính không kế thừa). KHÔNG dùng biến CSS ở :root:
+    // đổi biến kế thừa buộc Chrome tính lại style cho toàn bộ hàng nghìn phần tử mỗi lần thanh địa chỉ ẩn/hiện.
+    const content = $("content"),
+      formOpen = document.body.classList.contains("mobile-form-open");
+    if (content) {
+      if (!formOpen) {
+        if (content.style.height) content.style.height = "";
+        lastMobileH = -1;
+      } else if (h !== lastMobileH) {
+        lastMobileH = h;
+        content.style.height = h + "px";
+      }
+    }
     if (!bar.hidden) {
       bar.style.top =
         (v ? v.offsetTop + v.height : innerHeight) - bar.offsetHeight + "px";
@@ -650,28 +675,45 @@
   }
 
   // ---------- Khung nhập ôm đúng ô kẻ đen trên mẫu ----------
-  const darkCache = new Map(),
+  const canvasCache = new Map(),
     cellCache = new Map();
-  function darkMap(img) {
+  // Vẽ ảnh mẫu vào canvas CPU (1 lần/ảnh); chỉ đọc pixel VÙNG NHỎ quanh ô cần dò
+  // (Chrome điện thoại đọc cả trang 1241×1755 rất chậm).
+  function paperCanvas(img) {
     const key = img.currentSrc || img.src;
-    if (darkCache.has(key)) return darkCache.get(key);
-    let map = null;
+    if (canvasCache.has(key)) return canvasCache.get(key);
+    let ctx = null;
     try {
-      const W = img.naturalWidth,
-        H = img.naturalHeight;
       const c = document.createElement("canvas");
-      c.width = W;
-      c.height = H;
-      const ctx = c.getContext("2d", { willReadFrequently: true });
+      c.width = img.naturalWidth;
+      c.height = img.naturalHeight;
+      ctx = c.getContext("2d", { willReadFrequently: true });
       ctx.drawImage(img, 0, 0);
-      const d = ctx.getImageData(0, 0, W, H).data,
+    } catch {}
+    canvasCache.set(key, ctx);
+    return ctx;
+  }
+  function regionDark(img, x0, y0, x1, y1) {
+    const ctx = paperCanvas(img);
+    if (!ctx) return null;
+    const W0 = img.naturalWidth,
+      H0 = img.naturalHeight;
+    x0 = Math.max(0, Math.floor(x0));
+    y0 = Math.max(0, Math.floor(y0));
+    x1 = Math.min(W0, Math.ceil(x1));
+    y1 = Math.min(H0, Math.ceil(y1));
+    const W = x1 - x0,
+      H = y1 - y0;
+    if (W < 4 || H < 4) return null;
+    try {
+      const d = ctx.getImageData(x0, y0, W, H).data,
         dark = new Uint8Array(W * H);
       for (let i = 0, j = 0; j < dark.length; i += 4, j++)
         dark[j] = d[i] * 0.3 + d[i + 1] * 0.59 + d[i + 2] * 0.11 < 128 ? 1 : 0;
-      map = { dark, W, H };
-    } catch {}
-    darkCache.set(key, map);
-    return map;
+      return { dark, W, H, ox: x0, oy: y0, W0, H0 };
+    } catch {
+      return null;
+    }
   }
   function fitCellFrame(inp) {
     const el = inp.closest(".inline-field"),
@@ -682,24 +724,40 @@
     let cell = cellCache.get(key);
     if (cell === undefined) {
       cell = null;
-      const map = darkMap(img);
+      const pr = paper.getBoundingClientRect(),
+        fr = el.getBoundingClientRect(),
+        NW = img.naturalWidth,
+        NH = img.naturalHeight,
+        sx = NW / pr.width,
+        sy = NH / pr.height;
+      // Vùng đọc pixel = đúng phạm vi findCell có thể dò tới (ngang ±(rộng ô+220), dọc ±max(3×cao,60)).
+      const bx0 = (fr.left - pr.left) * sx,
+        bx1 = (fr.right - pr.left) * sx,
+        by0 = (fr.top - pr.top) * sy,
+        by1 = (fr.bottom - pr.top) * sy,
+        mh = bx1 - bx0 + 230,
+        mv = Math.max(3 * (by1 - by0), 60) + 12;
+      const region = regionDark(img, bx0 - mh, (by0 + by1) / 2 - mv, bx1 + mh, (by0 + by1) / 2 + mv);
+      const map = region && { W: NW, H: NH };
       if (map) {
-        const pr = paper.getBoundingClientRect(),
-          fr = el.getBoundingClientRect(),
-          sx = map.W / pr.width,
-          sy = map.H / pr.height;
         const f = {
           x0: (fr.left - pr.left) / pr.width,
           y0: (fr.top - pr.top) / pr.height,
           w: fr.width / pr.width,
           h: fr.height / pr.height,
         };
-        const c = G.findCell(map.dark, map.W, map.H, {
-          x0: (fr.left - pr.left) * sx,
-          x1: (fr.right - pr.left) * sx,
-          y0: (fr.top - pr.top) * sy,
-          y1: (fr.bottom - pr.top) * sy,
+        const rc = G.findCell(region.dark, region.W, region.H, {
+          x0: bx0 - region.ox,
+          x1: bx1 - region.ox,
+          y0: by0 - region.oy,
+          y1: by1 - region.oy,
         });
+        const c = rc && {
+          left: rc.left + region.ox,
+          right: rc.right + region.ox,
+          top: rc.top + region.oy,
+          bottom: rc.bottom + region.oy,
+        };
         // Ô kẻ chứa nhiều trường (ROUTE …/…/…, PAX TTL/C/Y/I, STA/ETA):
         // giữ cạnh trên/dưới theo đường kẻ, bề ngang chỉ ôm trường đang nhập.
         if (c) {
@@ -844,7 +902,6 @@
   }
   function pinchMove(e) {
     if (!pinch || e.touches.length !== 2) return;
-    e.preventDefault();
     const canvas = $("canvas"),
       d = Math.hypot(
         e.touches[0].clientX - e.touches[1].clientX,
