@@ -1624,3 +1624,42 @@ body[data-theme] .m3-appbar button.del-flight,
 .m3-appbar button.del-flight {
   color: var(--md-error);
 }
+
+/* Nút giờ nhanh +0 +2 +3 +5 +10 trong hộp tạo chuyến (hiện khi đang nhập STA/ATA/STD/ATD) */
+#flightForm .dlg-time-chips {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+#flightForm .dlg-time-chips[hidden] {
+  display: none;
+}
+body[data-theme] #flightForm .dlg-time-chips button,
+#flightForm .dlg-time-chips button {
+  min-height: 48px;
+  height: 48px;
+  padding: 2px 0;
+  border-radius: 12px;
+  border: 0;
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  display: grid;
+  place-items: center;
+  line-height: 1.1;
+}
+#flightForm .dlg-time-chips b {
+  font-size: 15px;
+}
+#flightForm .dlg-time-chips small {
+  font-size: 11px;
+  opacity: 0.8;
+}
+#flightForm input.time-text {
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
+}
+#flightForm input.time-bad {
+  border-color: var(--md-error) !important;
+  color: var(--md-error);
+}

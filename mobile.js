@@ -406,7 +406,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.26 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.27 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -573,6 +573,75 @@
       });
       syncRoute();
     }
+    // Giờ STA/ATA/STD/ATD nhập như trên form: bàn phím số, gõ 0920 → 09:20 (tự thêm ":"),
+    // đủ 4 số tự sang ô sau; có nút +0 +2 +3 +5 +10 (giờ hiện tại + N phút) ngay trên bàn phím.
+    const foot = form.querySelector(".dialog-footer");
+    let chips = foot.querySelector(".dlg-time-chips");
+    if (!chips) {
+      chips = document.createElement("div");
+      chips.className = "dlg-time-chips";
+      chips.hidden = true;
+      chips.innerHTML = [0, 2, 3, 5, 10].map((n) => `<button type="button" data-dadd="${n}"><b>+${n}</b><small></small></button>`).join("");
+      foot.prepend(chips);
+      chips.addEventListener("pointerdown", (e) => e.preventDefault()); // giữ bàn phím, giữ ô đang nhập
+      chips.addEventListener("click", (e) => {
+        const b = e.target.closest("[data-dadd]"),
+          t = document.activeElement;
+        if (!b || !t?.classList.contains("time-text")) return;
+        t.value = fmtHM(nowMin() + +b.dataset.dadd).replace(":", "");
+        t.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+    }
+    const paintChips = () => {
+      const now = nowMin();
+      chips.querySelectorAll("[data-dadd]").forEach((b) => (b.querySelector("small").textContent = fmtHM(now + +b.dataset.dadd)));
+    };
+    const tNext = (t) => {
+      const list = order(),
+        n = list[list.indexOf(t) + 1];
+      if (n) {
+        n.focus();
+        n.select?.();
+      } else t.blur();
+    };
+    const tCheck = (t) => {
+      const m = t.value.match(/^(\d{2}):(\d{2})$/);
+      const ok = !t.value || (m && +m[1] < 24 && +m[2] < 60);
+      t.setCustomValidity(ok ? "" : "Giờ không hợp lệ (00:00 – 23:59)");
+      t.classList.toggle("time-bad", !ok);
+      return ok;
+    };
+    ["sta", "ata", "std", "atd"]
+      .map((n) => form.elements[n])
+      .filter((t) => t && !t.classList.contains("time-text"))
+      .forEach((t) => {
+        const v = t.value;
+        t.type = "text";
+        t.value = v;
+        t.classList.add("time-text");
+        t.setAttribute("inputmode", "numeric");
+        t.setAttribute("maxlength", "5");
+        t.setAttribute("placeholder", "--:--");
+        t.setAttribute("autocomplete", "off");
+        t.addEventListener("input", () => {
+          const d = t.value.replace(/\D/g, "").slice(0, 4);
+          t.value = d.length > 2 ? d.slice(0, 2) + ":" + d.slice(2) : d;
+          t.classList.remove("time-bad");
+          if (d.length === 4 && tCheck(t)) tNext(t);
+        });
+        t.addEventListener("focus", () => {
+          paintChips();
+          chips.hidden = false;
+          t.select();
+        });
+        t.addEventListener("blur", () => {
+          chips.hidden = true;
+          const d = t.value.replace(/\D/g, "");
+          if (d.length && d.length <= 2) t.value = d.padStart(2, "0") + ":00"; // 9 → 09:00
+          else if (d.length === 3) t.value = "0" + d[0] + ":" + d.slice(1); // 920 → 09:20
+          tCheck(t);
+        });
+      });
     // Phím Tiếp/Enter trên bàn phím: sang ô kế tiếp, KHÔNG lưu. Chỉ nút LƯU CHUYẾN mới lưu.
     const order = () =>
       [...form.querySelectorAll("input, select, textarea")].filter(
