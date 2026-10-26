@@ -227,7 +227,7 @@
       .slice(0, 6);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.17 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.18 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -339,16 +339,24 @@
       const trio = document.createElement("div");
       trio.className = "route-trio";
       trio.innerHTML = `<span class="flight-pair-title">ROUTE</span><div class="route-row">${[0, 1, 2]
-        .map((i) => `${i ? '<span class="flight-slash">/</span>' : ""}<input data-route="${i}" maxlength="3" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="${["ĐI TỪ", "CXR", "ĐẾN"][i]}" aria-label="ROUTE phần ${i + 1}">`)
+        .map((i) =>
+          i === 1
+            ? // CXR là sân bay mặc định → ô giữa cố định, không nhận chạm/nhập, bỏ qua khi nhảy ô
+              `<span class="flight-slash">/</span><input data-route="1" class="route-fixed" value="CXR" readonly tabindex="-1" aria-label="ROUTE: CXR (cố định)">`
+            : `${i ? '<span class="flight-slash">/</span>' : ""}<input data-route="${i}" maxlength="3" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="${["ĐI TỪ", "", "ĐẾN"][i]}" aria-label="ROUTE ${i ? "đến" : "đi từ"}">`,
+        )
         .join("")}</div>`;
       rLabel.replaceWith(trio);
       trio.appendChild(rOrig);
-      const boxes = [...trio.querySelectorAll("[data-route]")];
-      boxes.forEach((b, i) => (b.value = (parts[i] || "").toUpperCase().slice(0, 3)));
-      if (!f && !rOrig.value) boxes[1].value = "CXR"; // chuyến mới: ô giữa mặc định CXR
+      const all = [...trio.querySelectorAll("[data-route]")],
+        boxes = all.filter((b) => !b.readOnly); // [đi từ, đến] — chỉ 2 ô nhập
+      // Hồ sơ cũ dạng "SGN-CXR-HAN" → lấy phần 1 và 3; dạng 2 phần "SGN-HAN" → coi là đi từ / đến.
+      const p = parts.filter((x, i) => !(parts.length === 3 && i === 1));
+      boxes[0].value = (p[0] || "").toUpperCase().slice(0, 3);
+      boxes[1].value = (p[1] || "").toUpperCase().slice(0, 3);
       const syncRoute = () => {
-        rOrig.value = boxes.map((b) => b.value).join("-").replace(/-+$/, "");
-        if (!boxes.some((b) => b.value)) rOrig.value = "";
+        const [x, y] = boxes.map((b) => b.value);
+        rOrig.value = x || y ? `${x}-CXR-${y}`.replace(/-+$/, "") : "";
       };
       boxes.forEach((b, i) => {
         b.addEventListener("input", () => {

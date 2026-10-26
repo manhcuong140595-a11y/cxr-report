@@ -1477,3 +1477,11 @@ body[data-theme] .mobile-form-open .tools .tpl-go,
 #flightFields label:has(> input[name="airline"]) {
   grid-column: 1 / -1;
 }
+/* Ô CXR cố định ở giữa ROUTE */
+.route-row input.route-fixed,
+body[data-theme] .route-row input.route-fixed {
+  background: var(--md-surface-container);
+  border-style: dashed;
+  color: var(--md-on-surface-variant);
+  pointer-events: none;
+}
