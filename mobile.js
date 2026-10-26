@@ -227,7 +227,7 @@
       .slice(0, 6);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.19 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.20 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -400,6 +400,45 @@
           next.select?.();
         } else e.target.blur();
       });
+    }
+    // Bàn phím hiện lên: thu hộp thoại vào vùng nhìn thấy và cuộn ô đang nhập ra giữa, không bị phím che.
+    const dlg = form.closest("dialog");
+    if (dlg && !dlg.dataset.kbFit) {
+      dlg.dataset.kbFit = "1";
+      const vv = window.visualViewport;
+      const fit = () => {
+        if (!dlg.open) return;
+        const h = vv ? vv.height : window.innerHeight;
+        const kb = vv && window.innerHeight - h > 120; // bàn phím đang mở
+        if (kb) {
+          dlg.style.maxHeight = Math.max(200, h - 16) + "px";
+          dlg.style.top = (vv.offsetTop || 0) + 8 + "px";
+          dlg.style.bottom = "auto";
+          dlg.style.marginTop = "0";
+        } else {
+          ["maxHeight", "top", "bottom", "marginTop"].forEach((k) => (dlg.style[k] = ""));
+        }
+        reveal();
+      };
+      const reveal = () => {
+        const el = document.activeElement;
+        if (!el || !dlg.contains(el) || el.closest(".dialog-footer")) return;
+        const foot = dlg.querySelector(".dialog-footer");
+        const box = dlg.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        const top = box.top + 40; // chừa tiêu đề
+        const bottom = (foot ? foot.getBoundingClientRect().top : box.bottom) - 8;
+        const mid = (top + bottom) / 2;
+        dlg.scrollTop += r.top + r.height / 2 - mid; // đưa ô vào giữa vùng nhìn thấy
+      };
+      dlg.addEventListener("focusin", () => {
+        reveal();
+        setTimeout(fit, 250); // đợi bàn phím trượt lên xong
+        setTimeout(fit, 600);
+      });
+      vv?.addEventListener("resize", fit);
+      vv?.addEventListener("scroll", fit);
+      dlg.addEventListener("close", () => ["maxHeight", "top", "bottom", "marginTop"].forEach((k) => (dlg.style[k] = "")));
     }
     if (!f) setTimeout(() => a.focus(), 50);
   };
