@@ -227,7 +227,7 @@
       .slice(0, 6);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.22 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.23 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -289,6 +289,12 @@
     const order = ["date", "flight", "route", "acType", "reg", "stand"];
     const ai = flightKeys.findIndex((r) => r[0] === "airline"); // bỏ ô AIRLINE, thay bằng AC TYPE
     if (ai >= 0) flightKeys.splice(ai, 1, ["acType", "AC TYPE", "text"]);
+    const label2 = { pax: "ARR PAX TTL", bags: "Y BAG", cargo: "ARR CARGO" };
+    if (!flightKeys.some((r) => r[0] === "cbag")) {
+      const bi = flightKeys.findIndex((r) => r[0] === "bags");
+      flightKeys.splice(bi + 1, 0, ["cbag", "C BAG", "number"]); // Priority Bag
+    }
+    Object.keys(label2).forEach((k) => { const r = flightKeys.find((x) => x[0] === k); if (r) r[1] = label2[k]; });
     const rows = flightKeys.map((r) => (label[r[0]] ? [r[0], label[r[0]], ...r.slice(2)] : r));
     rows.sort((a, b) => {
       const ia = order.indexOf(a[0]), ib = order.indexOf(b[0]);
@@ -447,7 +453,7 @@
   // Ô FLT No trên mẫu: phần trước "/" = chuyến đến, phần sau = chuyến đi.
   const oldInitial = initialFormValue;
   // Ô đầu form (AC TYPE, REGN...) đã lưu rỗng từ trước khi chuyến có dữ liệu → vẫn lấy từ chuyến.
-  const SYNC_KEYS = /^(?:f421_|f551_|f09_|f208_)?(acType|regn|bbbtRegn|bbbtAcType|bbbtFlight|bbbtRoute|bbbtDateText)$/;
+  const SYNC_KEYS = /^(?:f421_|f551_|f09_|f208_)?(acType|regn|arrPaxTTL|yBag|priorityBag|arrCargo|arrYBag|arrFCBag|bbbtRegn|bbbtAcType|bbbtFlight|bbbtRoute|bbbtDateText)$/;
   const oldFormValue = formValue;
   formValue = function (f, field) {
     const v = oldFormValue(f, field);
@@ -459,6 +465,10 @@
     if (k === "fltBefore") return splitFlight(f.flight)[0];
     if (k === "fltAfter") return splitFlight(f.flight)[1];
     if (k === "bayBefore" || k === "bay") return f.stand || ""; // BAY trong hộp tạo chuyến → ô BAY trên mẫu
+    if (k === "arrPaxTTL") return f.pax || ""; // ARR PAX TTL
+    if (k === "yBag" || k === "arrYBag") return f.bags || ""; // Y BAG
+    if (k === "priorityBag" || k === "arrFCBag") return f.cbag || ""; // Priority (C) BAG
+    if (k === "arrCargo") return f.cargo || ""; // ARR CARGO
     if (k === "bbbtRegn") return f.reg || ""; // A/C Regn. của BBBT (bản gốc tìm nhầm id bbbtACReg)
     if (k === "bbbtAcType") return f.acType || ""; // AC TYPE của BBBT đồng bộ từ hộp tạo chuyến
     if (k === "bbbtFlight") return f.flight || ""; // ô "Flight No." của BBBT (bản gốc tìm nhầm id bbbtFlightNo)
