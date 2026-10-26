@@ -227,7 +227,7 @@
       .slice(0, 6);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.14 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.15 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -244,6 +244,18 @@
     const [a = "", d = ""] = String(v || "").split("/");
     return [a.trim(), d.trim()];
   };
+  // Tên ô như trên form FSAGS; DATE lên đầu. (Sửa trực tiếp mảng flightKeys của app.js:
+  // dùng chung cho hộp tạo/sửa, tab Thông tin và lúc lưu → khóa dữ liệu giữ nguyên.)
+  (() => {
+    const label = { date: "DATE", flight: "FLT No", route: "ROUTE", reg: "REGN", airline: "AIRLINE", stand: "BAY" };
+    const order = ["date", "flight"];
+    const rows = flightKeys.map((r) => (label[r[0]] ? [r[0], label[r[0]], ...r.slice(2)] : r));
+    rows.sort((a, b) => {
+      const ia = order.indexOf(a[0]), ib = order.indexOf(b[0]);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+    flightKeys.splice(0, flightKeys.length, ...rows);
+  })();
   const oldEditor = openEditor;
   openEditor = function (f) {
     oldEditor(f);
@@ -256,7 +268,7 @@
     orig.required = false;
     const wrap = document.createElement("div");
     wrap.className = "flight-pair";
-    wrap.innerHTML = `<span class="flight-pair-title">Số hiệu chuyến bay * <small>Đến / Đi</small></span><div class="flight-pair-row"><input name="flightArr" placeholder="Chuyến đến" autocapitalize="characters" autocomplete="off" aria-label="Số hiệu chuyến đến"><span class="flight-slash">/</span><input name="flightDep" placeholder="Chuyến đi" autocapitalize="characters" autocomplete="off" aria-label="Số hiệu chuyến đi"></div>`;
+    wrap.innerHTML = `<span class="flight-pair-title">FLT No * <small>ARR / DEP</small></span><div class="flight-pair-row"><input name="flightArr" placeholder="ARR" autocapitalize="characters" autocomplete="off" aria-label="FLT No chuyến đến (ARR)"><span class="flight-slash">/</span><input name="flightDep" placeholder="DEP" autocapitalize="characters" autocomplete="off" aria-label="FLT No chuyến đi (DEP)"></div>`;
     label.replaceWith(wrap);
     wrap.appendChild(orig);
     const a = wrap.querySelector('[name="flightArr"]'),
@@ -267,7 +279,7 @@
       const x = a.value.trim().toUpperCase(),
         y = d.value.trim().toUpperCase();
       orig.value = x && y ? `${x}/${y}` : x || (y ? `/${y}` : "");
-      a.setCustomValidity(orig.value ? "" : "Nhập số hiệu chuyến đến hoặc chuyến đi");
+      a.setCustomValidity(orig.value ? "" : "Nhập FLT No chuyến đến (ARR) hoặc chuyến đi (DEP)");
     };
     a.oninput = d.oninput = sync;
     sync();
@@ -288,6 +300,7 @@
     const k = field.id.replace(/^(f421_|f551_|f09_|f208_)/, "");
     if (k === "fltBefore") return splitFlight(f.flight)[0];
     if (k === "fltAfter") return splitFlight(f.flight)[1];
+    if (k === "bayBefore" || k === "bay") return f.stand || ""; // BAY trong hộp tạo chuyến → ô BAY trên mẫu
     if (k === "bbbtFlight") return f.flight || ""; // ô "Flight No." của BBBT (bản gốc tìm nhầm id bbbtFlightNo)
     return oldInitial(f, field);
   };
