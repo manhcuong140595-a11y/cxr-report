@@ -227,7 +227,7 @@
       .slice(0, 6);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.23 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.24 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -246,6 +246,14 @@
     for (const [id, v] of Object.entries(fields)) {
       const f = (CXR_FORM_LAYOUTS[tpl] || []).find((x) => x.id === id);
       if (f) Object.assign(f, { y: v.y, h: v.h, baseline: v.baseline, lineStep: v.lineStep, lines: v.lines });
+    }
+  // Ô đầu BBBT (Flight No., A/C Regn., A/C Type, Date): đặt chữ lên DÒNG ĐẦU, ngay sau nhãn tiếng Anh,
+  // không đè lên nhãn tiếng Việt. Toạ độ đo từ ảnh mẫu (đường kẻ ô + điểm cuối nhãn); chữ dài tự thu nhỏ.
+  const HEAD_FIX = {"bbbt": {"bbbtFlight": {"x": 26.108, "y": 16.0114, "w": 9.1056, "h": 1.5385, "baseline": 17.151, "align": "left"}, "bbbtRegn": {"x": 46.3336, "y": 16.0114, "w": 7.2522, "h": 1.5385, "baseline": 17.151, "align": "left"}, "bbbtAcType": {"x": 64.1418, "y": 16.0114, "w": 4.8348, "h": 1.5385, "baseline": 17.151, "align": "left"}, "bbbtDateText": {"x": 75.2619, "y": 16.0114, "w": 14.2627, "h": 1.5385, "baseline": 17.151, "align": "left"}}};
+  for (const [tpl, fields] of Object.entries(HEAD_FIX))
+    for (const [id, v] of Object.entries(fields)) {
+      const f = (CXR_FORM_LAYOUTS[tpl] || []).find((x) => x.id === id);
+      if (f) Object.assign(f, v, { baselineSource: "printed-line" });
     }
   // Số dòng tối đa của ô nhiều dòng có lineStep (khớp cách renderWritingText tính).
   function fieldLineCapacity(f) {
