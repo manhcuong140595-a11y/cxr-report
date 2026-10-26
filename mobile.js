@@ -227,7 +227,7 @@
       .slice(0, 6);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.20 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.21 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -285,8 +285,10 @@
   // Tên ô như trên form FSAGS; DATE lên đầu. (Sửa trực tiếp mảng flightKeys của app.js:
   // dùng chung cho hộp tạo/sửa, tab Thông tin và lúc lưu → khóa dữ liệu giữ nguyên.)
   (() => {
-    const label = { date: "DATE", flight: "FLT No", route: "ROUTE", reg: "REGN", airline: "AIRLINE", stand: "BAY" };
-    const order = ["date", "flight", "route", "reg", "stand", "airline"];
+    const label = { date: "DATE", flight: "FLT No", route: "ROUTE", reg: "REGN", acType: "AC TYPE", stand: "BAY" };
+    const order = ["date", "flight", "route", "acType", "reg", "stand"];
+    const ai = flightKeys.findIndex((r) => r[0] === "airline"); // bỏ ô AIRLINE, thay bằng AC TYPE
+    if (ai >= 0) flightKeys.splice(ai, 1, ["acType", "AC TYPE", "text"]);
     const rows = flightKeys.map((r) => (label[r[0]] ? [r[0], label[r[0]], ...r.slice(2)] : r));
     rows.sort((a, b) => {
       const ia = order.indexOf(a[0]), ib = order.indexOf(b[0]);
@@ -449,6 +451,7 @@
     if (k === "fltBefore") return splitFlight(f.flight)[0];
     if (k === "fltAfter") return splitFlight(f.flight)[1];
     if (k === "bayBefore" || k === "bay") return f.stand || ""; // BAY trong hộp tạo chuyến → ô BAY trên mẫu
+    if (k === "bbbtAcType") return f.acType || ""; // AC TYPE của BBBT đồng bộ từ hộp tạo chuyến
     if (k === "bbbtFlight") return f.flight || ""; // ô "Flight No." của BBBT (bản gốc tìm nhầm id bbbtFlightNo)
     return oldInitial(f, field);
   };

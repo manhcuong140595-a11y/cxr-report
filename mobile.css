@@ -1474,7 +1474,7 @@ body[data-theme] .mobile-form-open .tools .tpl-go,
   font-weight: 400;
   font-size: 13px;
 }
-#flightFields label:has(> input[name="airline"]) {
+#flightFields label:has(> input[name="stand"]) {
   grid-column: 1 / -1;
 }
 /* Ô CXR cố định ở giữa ROUTE */
