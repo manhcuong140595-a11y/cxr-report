@@ -227,7 +227,7 @@
       .slice(0, 6);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.18 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.19 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -377,6 +377,29 @@
         b.addEventListener("focus", () => b.select());
       });
       syncRoute();
+    }
+    // Phím Tiếp/Enter trên bàn phím: sang ô kế tiếp, KHÔNG lưu. Chỉ nút LƯU CHUYẾN mới lưu.
+    const order = () =>
+      [...form.querySelectorAll("input, select, textarea")].filter(
+        (el) => el.type !== "hidden" && !el.readOnly && !el.disabled && el.offsetParent !== null && !el.closest(".dialog-footer"),
+      );
+    const ordered = order();
+    ordered.forEach((el, i) => {
+      if (el.tagName === "INPUT") el.setAttribute("enterkeyhint", i === ordered.length - 1 ? "done" : "next");
+    });
+    if (!form.dataset.enterNav) {
+      form.dataset.enterNav = "1";
+      form.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" || e.isComposing || e.target.tagName === "TEXTAREA" || e.target.tagName === "BUTTON") return;
+        e.preventDefault(); // chặn trình duyệt tự gửi form khi bấm Enter
+        const list = order(),
+          i = list.indexOf(e.target),
+          next = list[i + 1];
+        if (next) {
+          next.focus();
+          next.select?.();
+        } else e.target.blur();
+      });
     }
     if (!f) setTimeout(() => a.focus(), 50);
   };
