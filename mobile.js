@@ -227,7 +227,7 @@
       .slice(0, 6);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.16 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Hồ sơ gần đây</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.17 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -237,6 +237,44 @@
     };
     bindOpen();
   };
+
+  // ---------- Ô nhiều dòng theo dòng chấm ----------
+  // Vị trí dòng chấm dò từ ảnh mẫu (tools/find_lines.py, đã kiểm tra bằng mắt): y/h vùng nhập,
+  // baseline dòng đầu, lineStep khoảng cách dòng (% chiều cao trang), lines = số dòng chấm.
+  const LINE_FIX = {"bbbt": {"bbbtDetail": {"y": 56.0684, "h": 11.339, "baseline": 57.3789, "lineStep": 1.5954, "lines": 7}}};
+  for (const [tpl, fields] of Object.entries(LINE_FIX))
+    for (const [id, v] of Object.entries(fields)) {
+      const f = (CXR_FORM_LAYOUTS[tpl] || []).find((x) => x.id === id);
+      if (f) Object.assign(f, { y: v.y, h: v.h, baseline: v.baseline, lineStep: v.lineStep, lines: v.lines });
+    }
+  // Số dòng tối đa của ô nhiều dòng có lineStep (khớp cách renderWritingText tính).
+  function fieldLineCapacity(f) {
+    if (!f?.multiline || !f.lineStep) return 0;
+    if (f.lines) return f.lines;
+    const base = f.baseline !== undefined ? f.baseline - f.y : f.h * 0.72;
+    return Math.max(1, Math.floor((f.h - base) / f.lineStep) + 1);
+  }
+  // Bấm Tiếp/Enter trong ô nhiều dòng: xuống dòng chấm kế tiếp; hết dòng mới sang ô sau.
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      const t = e.target;
+      if (e.key !== "Enter" || e.shiftKey || e.isComposing || !t?.matches?.("textarea.paper-input")) return;
+      const id = t.closest("[data-field]")?.dataset.field,
+        f = formFields().find((x) => x.id === id),
+        cap = fieldLineCapacity(f);
+      if (!cap) return;
+      const s0 = t.selectionStart ?? t.value.length,
+        s1 = t.selectionEnd ?? s0;
+      const after = t.value.slice(0, s0) + "\n" + t.value.slice(s1);
+      if (after.split("\n").length > cap) return; // hết dòng → để app chuyển sang ô tiếp theo
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      t.setRangeText("\n", s0, s1, "end");
+      t.dispatchEvent(new Event("input", { bubbles: true }));
+    },
+    true,
+  );
 
   // ---------- Hộp tạo/sửa chuyến: Chuyến đến / Chuyến đi + nút cố định ----------
   // Số hiệu lưu dạng "ĐẾN/ĐI" (vd VJ123/VJ124) giống ô FLT No trên mẫu.
@@ -248,7 +286,7 @@
   // dùng chung cho hộp tạo/sửa, tab Thông tin và lúc lưu → khóa dữ liệu giữ nguyên.)
   (() => {
     const label = { date: "DATE", flight: "FLT No", route: "ROUTE", reg: "REGN", airline: "AIRLINE", stand: "BAY" };
-    const order = ["date", "flight"];
+    const order = ["date", "flight", "route", "reg", "stand", "airline"];
     const rows = flightKeys.map((r) => (label[r[0]] ? [r[0], label[r[0]], ...r.slice(2)] : r));
     rows.sort((a, b) => {
       const ia = order.indexOf(a[0]), ib = order.indexOf(b[0]);
@@ -291,6 +329,46 @@
       foot.innerHTML = `<button type="button" class="footer-cancel">HỦY</button><button type="submit" class="primary footer-save">LƯU CHUYẾN</button>`;
       foot.querySelector(".footer-cancel").onclick = () => $("flightDialog").close();
       form.appendChild(foot);
+    }
+    // ROUTE chia 3 ô như trên form: [trước] / [CXR] / [sau]; mỗi ô tối đa 3 chữ cái, đủ 3 chữ tự nhảy ô sau.
+    const rOrig = form.elements.route;
+    if (rOrig && !form.querySelector(".route-trio")) {
+      const parts = String(rOrig.value || "").split(/\s*(?:→|–|—|-|\/)\s*/);
+      const rLabel = rOrig.closest("label");
+      rOrig.type = "hidden";
+      const trio = document.createElement("div");
+      trio.className = "route-trio";
+      trio.innerHTML = `<span class="flight-pair-title">ROUTE</span><div class="route-row">${[0, 1, 2]
+        .map((i) => `${i ? '<span class="flight-slash">/</span>' : ""}<input data-route="${i}" maxlength="3" inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="${["ĐI TỪ", "CXR", "ĐẾN"][i]}" aria-label="ROUTE phần ${i + 1}">`)
+        .join("")}</div>`;
+      rLabel.replaceWith(trio);
+      trio.appendChild(rOrig);
+      const boxes = [...trio.querySelectorAll("[data-route]")];
+      boxes.forEach((b, i) => (b.value = (parts[i] || "").toUpperCase().slice(0, 3)));
+      if (!f && !rOrig.value) boxes[1].value = "CXR"; // chuyến mới: ô giữa mặc định CXR
+      const syncRoute = () => {
+        rOrig.value = boxes.map((b) => b.value).join("-").replace(/-+$/, "");
+        if (!boxes.some((b) => b.value)) rOrig.value = "";
+      };
+      boxes.forEach((b, i) => {
+        b.addEventListener("input", () => {
+          const v = b.value.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 3);
+          if (v !== b.value) b.value = v;
+          syncRoute();
+          if (v.length === 3 && boxes[i + 1]) {
+            boxes[i + 1].focus();
+            boxes[i + 1].select();
+          }
+        });
+        b.addEventListener("keydown", (e) => {
+          if (e.key === "Backspace" && !b.value && boxes[i - 1]) {
+            e.preventDefault();
+            boxes[i - 1].focus();
+          }
+        });
+        b.addEventListener("focus", () => b.select());
+      });
+      syncRoute();
     }
     if (!f) setTimeout(() => a.focus(), 50);
   };

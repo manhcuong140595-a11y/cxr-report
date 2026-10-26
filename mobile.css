@@ -1448,3 +1448,32 @@ body[data-theme] .mobile-form-open .tools .tpl-go,
   background: var(--md-outline-variant);
   pointer-events: none;
 }
+/* ROUTE 3 ô: [ĐI TỪ] / [CXR] / [ĐẾN] — cả hàng; AIRLINE cả hàng để các cặp phía dưới thẳng hàng */
+.route-trio {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+  margin: 7px 0;
+}
+.route-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.route-row input {
+  min-width: 0;
+  width: 100%;
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 2px;
+}
+.route-row input::placeholder {
+  letter-spacing: 0;
+  font-weight: 400;
+  font-size: 13px;
+}
+#flightFields label:has(> input[name="airline"]) {
+  grid-column: 1 / -1;
+}
