@@ -30,6 +30,7 @@
     dark: "M12 3a9 9 0 1 0 9 9c0-.46-.04-.92-.1-1.36a5.39 5.39 0 0 1-4.4 2.26 5.4 5.4 0 0 1-3.14-9.8c-.44-.06-.9-.1-1.36-.1z",
     trash: "M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6zM19 4h-3.5l-1-1h-5l-1 1H5v2h14z",
     sort: "M3 18h6v-2H3zM3 6v2h18V6zm0 7h12v-2H3z",
+    doneAll: "M18 7l-1.41-1.41-6.34 6.34 1.41 1.41zm4.24-1.41L11.66 16.17 7.48 12l-1.41 1.41L11.66 19l12-12zM.41 13.41 6 19l1.41-1.41L1.83 12z",
     check: "M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z",
     share:
       "M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11A2.99 2.99 0 1 0 15 5c0 .24.04.47.09.7L8.04 9.81a3 3 0 1 0 0 4.38l7.12 4.16c-.05.21-.08.43-.08.65a2.92 2.92 0 1 0 2.92-2.92z",
@@ -406,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.27 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.28 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -434,6 +435,26 @@
       const f = (CXR_FORM_LAYOUTS[tpl] || []).find((x) => x.id === id);
       if (f) Object.assign(f, v, { baselineSource: "printed-line" });
     }
+  // 55.1 FLIGHT MONITORING: ô Planned/Actual có dấu "/" in sẵn ở giữa → tách 2 ô giờ (trước / sau).
+  // Ô bên trái giữ id cũ (dữ liệu cũ không mất), ô bên phải id + "End". Đồng thời sửa lệch dòng ở bảng INBOUND
+  // (ô cũ nằm đè giữa 2 hàng kẻ). Toạ độ đo từ ảnh mẫu: đường kẻ hàng + vị trí dấu "/".
+  const SPLIT_FIX = {"fsags55.1": {"f551_inFCPlanned": {"y": 83.3618, "h": 1.3105, "baseline": 84.4444, "x": 38.4367, "w": 9.2667, "split": {"x": 48.751, "w": 9.1861}}, "f551_inFCActual": {"y": 83.3618, "h": 1.3105, "baseline": 84.4444, "x": 58.5818, "w": 10.2337, "split": {"x": 69.863, "w": 10.2337}}, "f551_inFCRemark": {"y": 83.3618, "h": 1.3105, "baseline": 84.4444}, "f551_inYPlanned": {"y": 84.9003, "h": 1.3675, "baseline": 86.0399, "x": 38.4367, "w": 9.2667, "split": {"x": 48.751, "w": 9.1861}}, "f551_inYActual": {"y": 84.9003, "h": 1.3675, "baseline": 86.0399, "x": 58.5818, "w": 10.2337, "split": {"x": 69.863, "w": 10.2337}}, "f551_inYRemark": {"y": 84.9003, "h": 1.3675, "baseline": 86.0399}, "f551_inCargoPlanned": {"y": 86.4957, "h": 1.3105, "baseline": 87.5783, "x": 38.4367, "w": 9.2667, "split": {"x": 48.751, "w": 9.1861}}, "f551_inCargoActual": {"y": 86.4957, "h": 1.3105, "baseline": 87.5783, "x": 58.5818, "w": 10.2337, "split": {"x": 69.863, "w": 10.2337}}, "f551_inCargoRemark": {"y": 86.4957, "h": 1.3105, "baseline": 87.5783}, "f551_outCargoMailSidePlanned": {"y": 24.1026, "h": 1.3675, "baseline": 25.2422, "x": 50.5238, "w": 6.2853, "split": {"x": 57.8566, "w": 6.2853}}, "f551_outCargoMailSideActual": {"y": 24.1026, "h": 1.3675, "baseline": 25.2422, "x": 64.867, "w": 7.0911, "split": {"x": 73.0056, "w": 7.0911}}, "f551_outCargoULDPlanned": {"y": 25.698, "h": 1.3105, "baseline": 26.7806, "x": 50.5238, "w": 6.2853, "split": {"x": 57.8566, "w": 6.2853}}, "f551_outCargoULDActual": {"y": 25.698, "h": 1.3105, "baseline": 26.7806, "x": 64.867, "w": 7.0911, "split": {"x": 73.0056, "w": 7.0911}}, "f551_outBagULDPlanned": {"y": 27.2365, "h": 1.3105, "baseline": 28.3191, "x": 50.5238, "w": 6.2853, "split": {"x": 57.8566, "w": 6.2853}}, "f551_outBagULDActual": {"y": 27.2365, "h": 1.3105, "baseline": 28.3191, "x": 64.867, "w": 7.0911, "split": {"x": 73.0056, "w": 7.0911}}}};
+  for (const [tpl, fields] of Object.entries(SPLIT_FIX)) {
+    const list = CXR_FORM_LAYOUTS[tpl] || [];
+    for (const [id, v] of Object.entries(fields)) {
+      const i = list.findIndex((x) => x.id === id);
+      if (i < 0) continue;
+      const f = list[i];
+      const { split, ...pos } = v;
+      Object.assign(f, pos, { baselineSource: "printed-line" });
+      if (!split || list.some((x) => x.id === id + "End")) continue;
+      const lbl = f.label;
+      f.label = lbl + " (trước /)";
+      list.splice(i + 1, 0, { ...f, id: id + "End", label: lbl + " (sau /)", x: split.x, w: split.w });
+      const fb = window.CXR_FOCUS_BOUNDS?.[tpl];
+      if (fb && fb[id]) fb[id + "End"] = fb[id];
+    }
+  }
   // Số dòng tối đa của ô nhiều dòng có lineStep (khớp cách renderWritingText tính).
   function fieldLineCapacity(f) {
     if (!f?.multiline || !f.lineStep) return 0;
@@ -870,9 +891,65 @@
       : `${icon("check")}<span>Hoàn tất</span>`;
     b.setAttribute("aria-label", done ? "Biểu mẫu đã hoàn tất" : "Hoàn tất biểu mẫu");
   }
+  // ---------- Tick all: tick nhanh các ô kiểm tra (checklist) của mẫu đang mở ----------
+  // Chỉ các ô "đã kiểm tra" theo quy trình; KHÔNG đụng ô lựa chọn loại trừ nhau
+  // (Turnaround/Departure, Yes/No/N/A, Delay, thiết bị GPU/ACU..., lý do offload...).
+  const TICK_ALL = {
+    "fsags55.1": /^f551_(fod|walk|safety|compt|sequence|uld|a[A-Z]|b[A-Z]|lirLatest|notocCrew|restraints|postDep)/,
+    "fsags42.3": /^(park\d(Arr|Dep)|cargoArr|cargoDep|seqArr|seqDep|postDeparture)$/,
+    "fsags42.1": /^f421_(park\d(Arr|Dep)|postDeparture)$/,
+    "fsags09": /^f09_(task|post)[A-Z]/,
+  };
+  const tickFields = () => {
+    const re = TICK_ALL[templateId];
+    return re ? formFields().filter((x) => x.type === "check" && re.test(x.id)) : [];
+  };
+  function refreshTickButton() {
+    const b = $("tickAll");
+    if (!b) return;
+    const list = tickFields(),
+      f = active();
+    b.hidden = !list.length || !canEdit(f);
+    const all = list.length && list.every((x) => formValue(f, x));
+    b.classList.toggle("is-on", !!all);
+    b.innerHTML = `${icon("doneAll")}<span>${all ? "Bỏ tick" : "Tick all"}</span>`;
+    b.setAttribute("aria-label", all ? "Bỏ tick tất cả ô kiểm tra" : "Tick tất cả ô kiểm tra");
+  }
+  async function tickAll() {
+    await flushInlineDrafts?.();
+    const f = active(),
+      list = tickFields();
+    if (!f || !list.length) return;
+    const on = !list.every((x) => formValue(f, x));
+    const values = { ...f.values, [templateId]: { ...f.values?.[templateId] } };
+    list.forEach((x) => (values[templateId][x.id] = on));
+    const completedForms = { ...f.completedForms };
+    delete completedForms[templateId];
+    await saveFlight({ ...f, values, completedForms }, (on ? "Tick all " : "Bỏ tick ") + templateId);
+    notice(on ? `Đã tick ${list.length} ô kiểm tra` : `Đã bỏ tick ${list.length} ô`);
+  }
   function setupCompleteButton() {
     const pf = $("printForm");
     if (pf) pf.innerHTML = `${icon("share")}<span>Xuất PDF</span>`;
+    if (pf && !$("tickAll")) {
+      const t = document.createElement("button");
+      t.type = "button";
+      t.id = "tickAll";
+      t.className = "tick-all-btn";
+      t.onclick = async () => {
+        t.disabled = true;
+        try {
+          await tickAll();
+        } catch (e) {
+          notice(e.message || "Không tick được");
+        } finally {
+          t.disabled = false;
+          refreshTickButton();
+        }
+      };
+      pf.parentNode.insertBefore(t, pf);
+    }
+    refreshTickButton();
     const b = $("saveValues");
     if (!b) return;
     b.onclick = async () => {

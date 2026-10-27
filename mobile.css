@@ -1663,3 +1663,37 @@ body[data-theme] #flightForm .dlg-time-chips button,
   border-color: var(--md-error) !important;
   color: var(--md-error);
 }
+
+/* Nút Tick all ở thanh dưới biểu mẫu: gọn, icon + chữ nhỏ */
+body[data-theme] .mobile-form-open .form-dock button#tickAll,
+.mobile-form-open .form-dock button#tickAll {
+  flex: 0 0 auto;
+  width: 64px;
+  padding: 2px 0;
+  display: grid;
+  place-items: center;
+  gap: 0;
+  line-height: 1.1;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 16px;
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  border: 0;
+}
+.mobile-form-open .form-dock button#tickAll .m3-icon {
+  width: 20px;
+  height: 20px;
+}
+body[data-theme] .mobile-form-open .form-dock button#tickAll.is-on,
+.mobile-form-open .form-dock button#tickAll.is-on {
+  background: transparent;
+  border: 1px solid var(--md-outline);
+  color: var(--md-on-surface-variant);
+}
+.mobile-form-open .form-dock button#tickAll[hidden] {
+  display: none;
+}
+.mobile-form-open .form-dock button#tickAll span {
+  display: block;
+}
