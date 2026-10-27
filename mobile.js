@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.30 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.31 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -464,6 +464,10 @@
       // Ô giờ: formFields() đặt chân chữ ở GIỮA ô (+0.32 cỡ chữ) → dời ô để chân chữ rơi đúng trên gạch.
       if (/time/i.test(f.type)) f.y = +(f.baseline - f.h / 2 - ((12.8 / 794) * 1241 * 0.32) / 1755 * 100).toFixed(4);
     }
+  // 55.1 chữ ký + Full name: ô ký = khoảng trống giữa tiêu đề và dòng "Full name"; họ tên nằm trên dòng chấm
+  // NGAY SAU chữ "Full name:" (trước đây đè lên chữ in sẵn). Đo từ ảnh mẫu trang 2.
+  const SIG_551 = {"f551_engineerSig": {"x": 7.4134, "w": 31.4263, "y": 87.1225, "h": 4.7863}, "f551_loadingStaffSig": {"x": 60.274, "w": 31.9098, "y": 85.755, "h": 6.154}, "f551_engineerName": {"x": 15.8743, "w": 21.8372, "y": 91.396, "h": 1.7094, "baseline": 92.8775, "align": "center"}, "f551_loadingStaffName": {"x": 68.7349, "w": 23.4488, "y": 91.396, "h": 1.7094, "baseline": 92.8775, "align": "center"}};
+  for (const f of CXR_FORM_LAYOUTS["fsags55.1"] || []) if (SIG_551[f.id]) Object.assign(f, SIG_551[f.id], { baselineSource: "printed-line" });
   // 55.1: số/chữ ngắn nhập vào canh GIỮA ô (trừ ô ghi chú, nhận xét, lý do, briefing, họ tên, hàng đặc biệt).
   const KEEP_LEFT_551 = /^f551_(handlingNotes|airlineComment|reasonText|briefing|engineerName|loadingStaffName|arrSpecial|depSpecial)$/;
   for (const f of CXR_FORM_LAYOUTS["fsags55.1"] || [])
@@ -805,10 +809,94 @@
     return oldInitial(f, field);
   };
 
+  // Họ tên dưới chữ ký: chữ to hơn một chút cho dễ đọc (formFields() ép mọi ô chữ về cỡ 12.8).
+  const NAME_FONT = { f551_engineerName: 15, f551_loadingStaffName: 15 };
+  const rawFormFields = formFields;
+  formFields = function (...a) {
+    const list = rawFormFields.apply(this, a);
+    for (const x of list) if (NAME_FONT[x.id]) x.font = NAME_FONT[x.id];
+    return list;
+  };
+  // ---------- Chữ ký rõ hơn ----------
+  // Nét ký dày hơn (bản gốc 3px trên canvas 800px → in ra rất mảnh) và khi lưu thì cắt bỏ khoảng trắng thừa
+  // quanh nét ký → chữ ký lấp đầy ô ký trên mẫu thay vì nhỏ xíu ở giữa.
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      if (e.target.id === "signatureCanvas") e.target.getContext("2d").lineWidth = 7;
+    },
+    true,
+  );
+  // Mở lại chữ ký đã cắt gọn: vẽ giữ đúng tỉ lệ (bản gốc kéo giãn ảnh ra cả khung → méo).
+  const rawDraw = CanvasRenderingContext2D.prototype.drawImage;
+  CanvasRenderingContext2D.prototype.drawImage = function (img, ...a) {
+    const c = this.canvas;
+    if (c?.id === "signatureCanvas" && a.length === 4 && a[0] === 0 && a[1] === 0 && a[2] === c.width && a[3] === c.height && img.width && img.height) {
+      const k = Math.min(c.width / img.width, c.height / img.height, 1.6),
+        w = img.width * k,
+        h = img.height * k;
+      return rawDraw.call(this, img, (c.width - w) / 2, (c.height - h) / 2, w, h);
+    }
+    return rawDraw.call(this, img, ...a);
+  };
+  const rawToDataURL = HTMLCanvasElement.prototype.toDataURL;
+  HTMLCanvasElement.prototype.toDataURL = function (...args) {
+    if (this.id !== "signatureCanvas") return rawToDataURL.apply(this, args);
+    try {
+      const w = this.width,
+        h = this.height,
+        d = this.getContext("2d").getImageData(0, 0, w, h).data;
+      let x0 = w, y0 = h, x1 = -1, y1 = -1;
+      for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++)
+          if (d[(y * w + x) * 4 + 3] > 20) {
+            if (x < x0) x0 = x;
+            if (x > x1) x1 = x;
+            if (y < y0) y0 = y;
+            if (y > y1) y1 = y;
+          }
+      if (x1 < 0) return rawToDataURL.apply(this, args);
+      const pad = 10;
+      x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad);
+      x1 = Math.min(w - 1, x1 + pad); y1 = Math.min(h - 1, y1 + pad);
+      const c = document.createElement("canvas");
+      c.width = x1 - x0 + 1;
+      c.height = y1 - y0 + 1;
+      c.getContext("2d").drawImage(this, x0, y0, c.width, c.height, 0, 0, c.width, c.height);
+      return rawToDataURL.apply(c, args);
+    } catch {
+      return rawToDataURL.apply(this, args);
+    }
+  };
+
   // ---------- Biểu mẫu: canh vừa ngang theo nội dung ----------
   const oldForms = renderForms;
+  // Vẽ lại cùng chuyến + cùng mẫu (sau khi ký tên, nhập ô qua hộp thoại, tick all…) → giữ nguyên vị trí đang xem,
+  // không nhảy về trang đầu.
+  let lastFormView = null,
+    lastScroll = null;
+  document.addEventListener(
+    "scroll",
+    (e) => {
+      const c = e.target;
+      if (c?.id === "canvas" && c.scrollHeight > 0) lastScroll = { key: lastFormView, ratio: c.scrollTop / c.scrollHeight };
+    },
+    true,
+  );
   renderForms = function (f) {
+    const viewKey = (f?.id || selected) + "|" + templateId;
+    const keep = lastScroll && lastScroll.key === viewKey ? lastScroll : null;
+    lastFormView = viewKey;
+    if (!keep) lastScroll = null;
     oldForms(f);
+    if (keep)
+      [0, 60, 400].forEach((ms) =>
+        setTimeout(() => {
+          const c = $("canvas");
+          if (!c || lastFormView !== viewKey || (ms && c.scrollTop > 5)) return; // người dùng đã cuộn → thôi
+          c.scrollTop = keep.ratio * c.scrollHeight;
+        }, ms),
+      );
     setupCompleteButton();
     prewarmPdf();
     pdfCache = null;
