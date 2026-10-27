@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.29 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.30 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -484,6 +484,30 @@
     }
     return oldKeyField(field, key, direction);
   };
+  // Bàn phím Android: nút "Tiếp" có thể tự nhảy sang ô kế trong DOM (Remark) mà không gửi phím Enter.
+  // → nếu rời ô phải (sau "/") sang ô khác mà KHÔNG phải do chạm tay, chuyển về ô trái hàng dưới.
+  let lastTap = 0;
+  document.addEventListener("pointerdown", () => (lastTap = Date.now()), true);
+  document.addEventListener(
+    "focusin",
+    (e) => {
+      const from = e.relatedTarget?.closest?.("[data-field]")?.dataset.field,
+        to = e.target.closest?.("[data-field]")?.dataset.field;
+      if (!from || !to || from === to || Date.now() - lastTap < 600) return;
+      const f = formFields().find((x) => x.id === from);
+      if (!f) return;
+      const target = keyboardFormField(f, "Enter", 1);
+      if (!target || target.id === to || !/(Planned|Actual)End$/.test(from)) return;
+      const el = document.querySelector(`[data-field="${target.id}"] .paper-input`);
+      if (!el) return;
+      setTimeout(() => {
+        el.focus({ preventScroll: true });
+        el.scrollIntoView({ block: "center" });
+        el.select?.();
+      }, 0);
+    },
+    true,
+  );
   // Số dòng tối đa của ô nhiều dòng có lineStep (khớp cách renderWritingText tính).
   function fieldLineCapacity(f) {
     if (!f?.multiline || !f.lineStep) return 0;
