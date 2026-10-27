@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.31 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.32 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -490,28 +490,47 @@
   };
   // Bàn phím Android: nút "Tiếp" có thể tự nhảy sang ô kế trong DOM (Remark) mà không gửi phím Enter.
   // → nếu rời ô phải (sau "/") sang ô khác mà KHÔNG phải do chạm tay, chuyển về ô trái hàng dưới.
-  let lastTap = 0;
+  let lastTap = 0,
+    redirecting = false;
   document.addEventListener("pointerdown", () => (lastTap = Date.now()), true);
   document.addEventListener(
     "focusin",
     (e) => {
       const from = e.relatedTarget?.closest?.("[data-field]")?.dataset.field,
         to = e.target.closest?.("[data-field]")?.dataset.field;
-      if (!from || !to || from === to || Date.now() - lastTap < 600) return;
+      if (redirecting || !from || !to || from === to || Date.now() - lastTap < 600) return;
       const f = formFields().find((x) => x.id === from);
       if (!f) return;
       const target = keyboardFormField(f, "Enter", 1);
-      if (!target || target.id === to || !/(Planned|Actual)End$/.test(from)) return;
+      if (!target || target.id === to || !/(Planned|Actual)End$|^(f421_)?b[123](ADL|CHD|INF)$/.test(from)) return;
       const el = document.querySelector(`[data-field="${target.id}"] .paper-input`);
       if (!el) return;
       setTimeout(() => {
+        redirecting = true; // chính lần chuyển ô này không được xử lý lại (tránh nhảy dây chuyền)
         el.focus({ preventScroll: true });
         el.scrollIntoView({ block: "center" });
         el.select?.();
+        redirecting = false;
       }, 0);
     },
     true,
   );
+  // 42.3 / 42.1 "Total Bags" (The 1st/2nd/3rd): chữ canh giữa ô kẻ (trước đây nằm đè đường kẻ dưới).
+  const TOTALBAGS_FIX = {"fsags42.3": {"b1TotalBags": {"x": 52.78, "w": 13.618, "y": 78.2336, "h": 2.849, "baseline": 80.057, "align": "center"}, "b2TotalBags": {"x": 67.1233, "w": 13.5375, "y": 78.2336, "h": 2.849, "baseline": 80.057, "align": "center"}, "b3TotalBags": {"x": 81.386, "w": 14.7462, "y": 78.2336, "h": 2.849, "baseline": 80.057, "align": "center"}}, "fsags42.1": {"f421_b1TotalBags": {"x": 52.78, "w": 13.618, "y": 72.0798, "h": 2.906, "baseline": 73.9316, "align": "center"}, "f421_b2TotalBags": {"x": 67.1233, "w": 13.5375, "y": 72.0798, "h": 2.906, "baseline": 73.9316, "align": "center"}, "f421_b3TotalBags": {"x": 81.386, "w": 14.7462, "y": 72.0798, "h": 2.906, "baseline": 73.9316, "align": "center"}}};
+  for (const [tpl, fields] of Object.entries(TOTALBAGS_FIX))
+    for (const f of CXR_FORM_LAYOUTS[tpl] || []) if (fields[f.id]) Object.assign(f, fields[f.id], { baselineSource: "printed-line" });
+  // Ô ADL / CHD / INF (The 1st/2nd/3rd): Enter xuống dòng trong khung ADL → CHD → INF, hết khung sang khung kế tiếp.
+  const oldKeyField2 = keyboardFormField;
+  keyboardFormField = function (field, key, direction = 1) {
+    const m = key === "Enter" && direction === 1 && field.id.match(/^(f421_)?b([123])(ADL|CHD|INF)$/);
+    if (m) {
+      const pre = m[1] || "", n = +m[2];
+      const nextId = m[3] === "ADL" ? `${pre}b${n}CHD` : m[3] === "CHD" ? `${pre}b${n}INF` : n < 3 ? `${pre}b${n + 1}ADL` : null;
+      const target = nextId && formFields().find((x) => x.id === nextId);
+      if (target) return target;
+    }
+    return oldKeyField2(field, key, direction);
+  };
   // Số dòng tối đa của ô nhiều dòng có lineStep (khớp cách renderWritingText tính).
   function fieldLineCapacity(f) {
     if (!f?.multiline || !f.lineStep) return 0;
