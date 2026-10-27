@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.28 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.29 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -455,6 +455,35 @@
       if (fb && fb[id]) fb[id + "End"] = fb[id];
     }
   }
+  // 55.1: ô 1 dòng khớp đúng đoạn gạch chân (____) in sẵn: x/w theo gạch, chân chữ ngay trên gạch;
+  // ô trong bảng "Arrival transit / Actual check" canh giữa hàng kẻ. Đo bằng tools/fit_underline.py.
+  const FIT_551 = {"f551_date": {"x": 11.523, "w": 9.589, "y": 13.4473, "baseline": 14.8718}, "f551_fltBefore": {"x": 27.9613, "w": 8.6221, "y": 13.4473, "baseline": 14.8718}, "f551_fltAfter": {"x": 38.1144, "w": 8.7027, "y": 13.4473, "baseline": 14.8718}, "f551_regn": {"x": 56.245, "w": 6.8493, "y": 13.4473, "baseline": 14.8718}, "f551_route1": {"x": 70.9106, "w": 6.7687, "y": 13.4473, "baseline": 14.8718}, "f551_route3": {"x": 84.0451, "w": 6.7687, "y": 13.4473, "baseline": 14.8718}, "f551_acType": {"x": 15.2297, "w": 7.7357, "y": 16.4103, "baseline": 17.8348}, "f551_bay": {"x": 28.3642, "w": 6.8493, "y": 16.4103, "baseline": 17.8348}, "f551_sta": {"x": 34.0048, "w": 10.4754, "y": 20.8547, "baseline": 22.2222}, "f551_eta": {"x": 50.0403, "w": 5.8824, "y": 20.8547, "baseline": 22.2222}, "f551_ata1": {"x": 62.1273, "w": 9.589, "y": 20.8547, "baseline": 22.2222}, "f551_ata2": {"x": 73.8114, "w": 12.4093, "y": 20.8547, "baseline": 22.2222}, "f551_arrFCBag": {"x": 18.4529, "w": 13.2957, "y": 23.0769, "baseline": 24.4444}, "f551_arrYBag": {"x": 43.6745, "w": 16.0355, "y": 23.0769, "baseline": 24.4444}, "f551_arrCargo": {"x": 18.614, "w": 11.4424, "y": 25.2991, "baseline": 26.6667}, "f551_arrMail": {"x": 41.3376, "w": 18.8558, "y": 25.2991, "baseline": 26.6667}, "f551_arrSpecial": {"x": 75.1813, "w": 16.9218, "y": 25.2991, "baseline": 26.6667}, "f551_std": {"x": 33.9243, "w": 6.9299, "y": 35.2136, "baseline": 36.5812}, "f551_etd": {"x": 46.4948, "w": 4.029, "y": 35.2136, "baseline": 36.5812}, "f551_atd1": {"x": 55.7615, "w": 4.996, "y": 35.2136, "baseline": 36.5812}, "f551_lirNotoc": {"x": 89.2023, "w": 3.2232, "y": 35.2136, "baseline": 36.5812}, "f551_depCargo": {"x": 18.614, "w": 24.4158, "y": 37.4359, "baseline": 38.8034}, "f551_depMail": {"x": 52.4577, "w": 6.8493, "y": 37.4359, "baseline": 38.8034}, "f551_depSpecial": {"x": 74.5367, "w": 17.9694, "y": 37.4359, "baseline": 38.8034}, "f551_estimatedBag": {"x": 18.6946, "w": 73.328, "y": 39.6581, "baseline": 41.0256}, "f551_briefing": {"x": 47.6229, "w": 44.8026, "y": 41.8233, "baseline": 43.1909}, "f551_driver1": {"x": 12.7317, "w": 7.6551, "y": 46.3247, "baseline": 47.6923}, "f551_driver2": {"x": 22.2401, "w": 7.6551, "y": 46.3247, "baseline": 47.6923}, "f551_porter1": {"x": 36.664, "w": 8.7027, "y": 46.3247, "baseline": 47.6923}, "f551_porter2": {"x": 46.4142, "w": 8.7027, "y": 46.3247, "baseline": 47.6923}, "f551_step1": {"x": 68.4932, "w": 8.6221, "y": 46.3247, "baseline": 47.6923}, "f551_step2": {"x": 79.3715, "w": 8.6221, "y": 46.3247, "baseline": 47.6923}, "f551_belt1": {"x": 18.4529, "w": 6.7687, "y": 48.547, "baseline": 49.9145}, "f551_belt2": {"x": 26.9138, "w": 6.7687, "y": 48.547, "baseline": 49.9145}, "f551_tractor1": {"x": 41.1765, "w": 7.6551, "y": 48.547, "baseline": 49.9145}, "f551_tractor2": {"x": 50.7655, "w": 6.7687, "y": 48.547, "baseline": 49.9145}, "f551_loader1": {"x": 67.8485, "w": 9.589, "y": 48.547, "baseline": 49.9145}, "f551_loader2": {"x": 79.3715, "w": 8.6221, "y": 48.547, "baseline": 49.9145}, "f551_transit_bag": {"y": 29.3447, "h": 1.5385, "baseline": 30.5413}, "f551_actual_bag": {"y": 29.3447, "h": 1.5385, "baseline": 30.5413}, "f551_transit_cargo": {"y": 31.1681, "h": 1.4815, "baseline": 32.3077}, "f551_actual_cargo": {"y": 31.1681, "h": 1.4815, "baseline": 32.3077}, "f551_transit_mail": {"y": 32.8775, "h": 1.5385, "baseline": 34.0741}, "f551_actual_mail": {"y": 32.8775, "h": 1.5385, "baseline": 34.0741}};
+  for (const f of CXR_FORM_LAYOUTS["fsags55.1"] || [])
+    if (FIT_551[f.id]) {
+      Object.assign(f, FIT_551[f.id], { baselineSource: "printed-line" });
+      // Ô giờ: formFields() đặt chân chữ ở GIỮA ô (+0.32 cỡ chữ) → dời ô để chân chữ rơi đúng trên gạch.
+      if (/time/i.test(f.type)) f.y = +(f.baseline - f.h / 2 - ((12.8 / 794) * 1241 * 0.32) / 1755 * 100).toFixed(4);
+    }
+  // 55.1: số/chữ ngắn nhập vào canh GIỮA ô (trừ ô ghi chú, nhận xét, lý do, briefing, họ tên, hàng đặc biệt).
+  const KEEP_LEFT_551 = /^f551_(handlingNotes|airlineComment|reasonText|briefing|engineerName|loadingStaffName|arrSpecial|depSpecial)$/;
+  for (const f of CXR_FORM_LAYOUTS["fsags55.1"] || [])
+    if (!f.multiline && f.type !== "check" && f.type !== "signature" && !KEEP_LEFT_551.test(f.id)) f.align = "center";
+  // 55.1 bảng giờ tách "/": Enter đi trái → phải, xong ô phải thì XUỐNG HÀNG (ô trái cùng cột), không sang Remark.
+  const SPLIT_ROWS_551 = [
+    ["inFC", "inY", "inCargo"],
+    ["outCargoMailSide", "outCargoULD", "outBagULD"],
+  ];
+  const oldKeyField = keyboardFormField;
+  keyboardFormField = function (field, key, direction = 1) {
+    const m = templateId === "fsags55.1" && key === "Enter" && direction === 1 && field.id.match(/^f551_([A-Za-z]+?)(Planned|Actual)End$/);
+    if (m) {
+      const rows = SPLIT_ROWS_551.find((r) => r.includes(m[1]));
+      const nextRow = rows && rows[rows.indexOf(m[1]) + 1];
+      const target = nextRow && formFields().find((x) => x.id === "f551_" + nextRow + m[2]);
+      if (target) return target;
+    }
+    return oldKeyField(field, key, direction);
+  };
   // Số dòng tối đa của ô nhiều dòng có lineStep (khớp cách renderWritingText tính).
   function fieldLineCapacity(f) {
     if (!f?.multiline || !f.lineStep) return 0;
