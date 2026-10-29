@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.32 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.33 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -836,6 +836,88 @@
     for (const x of list) if (NAME_FONT[x.id]) x.font = NAME_FONT[x.id];
     return list;
   };
+  // ---------- N/A: điền "N/A" hoặc gạch chéo mọi ô trống còn lại của mẫu đang mở ----------
+  const STRIKE = "✕"; // giá trị đánh dấu "gạch chéo ô" (vẽ thành 1 đường chéo, không in chữ)
+  const rawRenderWriting = renderWritingText;
+  renderWritingText = function (field, value) {
+    if (value === STRIKE) {
+      const refW = field.refWidth || 1241,
+        refH = field.refHeight || 1755,
+        w = (field.w / 100) * refW,
+        h = (field.h / 100) * refH;
+      return `<svg class="writing-svg strike-svg" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true"><line x1="1" y1="${h - 1}" x2="${w - 1}" y2="1" stroke="#003b8e" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+    }
+    return rawRenderWriting(field, value);
+  };
+  Object.setPrototypeOf(renderWritingText, rawRenderWriting);
+  const NA_TYPES = new Set(["text", "number", "time"]);
+  const isBlank = (v) => v === "" || v === null || v === undefined || v === false;
+  const blankFields = () => {
+    const f = active();
+    return formFields().filter((x) => NA_TYPES.has(x.type) && !isCalculatedTotal(x.id) && isBlank(formValue(f, x)));
+  };
+  const markedFields = () => {
+    const f = active(),
+      vals = f?.values?.[templateId] || {};
+    return Object.keys(vals).filter((k) => vals[k] === STRIKE || vals[k] === "N/A");
+  };
+  async function applyNA(mode) {
+    await flushInlineDrafts?.();
+    const f = active();
+    if (!f) return 0;
+    const values = { ...f.values, [templateId]: { ...f.values?.[templateId] } };
+    let n = 0;
+    if (mode === "clear") {
+      for (const k of markedFields()) {
+        delete values[templateId][k];
+        n++;
+      }
+    } else {
+      for (const x of blankFields()) {
+        values[templateId][x.id] = mode === "fill" ? "N/A" : STRIKE;
+        n++;
+      }
+    }
+    if (!n) return 0;
+    const completedForms = { ...f.completedForms };
+    delete completedForms[templateId];
+    await saveFlight({ ...f, values, completedForms }, `N/A ${mode} ${templateId}`);
+    return n;
+  }
+  function openNASheet() {
+    let d = document.getElementById("naSheet");
+    if (!d) {
+      d = document.createElement("dialog");
+      d.id = "naSheet";
+      d.className = "m3-sheet";
+      document.body.appendChild(d);
+    }
+    const blanks = blankFields().length,
+      marked = markedFields().length;
+    d.innerHTML = `<div class="sheet-handle"></div><h2>Ô trống còn lại</h2><p class="muted">Mẫu ${escape(String(templateId).replace(/^fsags/i, ""))}: ${blanks} ô trống chưa nhập.</p><div class="sheet-actions"><button type="button" class="sheet-btn primary-tonal" data-na-act="fill" ${blanks ? "" : "disabled"}><span><b>Điền N/A</b><small>Ghi “N/A” vào ${blanks} ô trống</small></span></button><button type="button" class="sheet-btn" data-na-act="strike" ${blanks ? "" : "disabled"}><span><b>Gạch chéo</b><small>Kẻ 1 đường chéo qua ${blanks} ô trống</small></span></button>${marked ? `<button type="button" class="sheet-btn" data-na-act="clear"><span><b>Bỏ N/A và gạch chéo</b><small>Trả ${marked} ô về trống</small></span></button>` : ""}</div><div class="dialog-actions"><button type="button" class="text-btn" data-na-act="cancel">Đóng</button></div>`;
+    d.onclick = async (e) => {
+      const b = e.target.closest("[data-na-act]");
+      if (!b || b.disabled) return;
+      const act = b.dataset.naAct;
+      d.close();
+      if (act === "cancel") return;
+      try {
+        const n = await applyNA(act);
+        notice(act === "clear" ? `Đã bỏ ${n} ô` : act === "fill" ? `Đã điền N/A vào ${n} ô` : `Đã gạch chéo ${n} ô`);
+      } catch (err) {
+        notice(err.message || "Không thực hiện được");
+      }
+    };
+    d.showModal();
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest?.("[data-na]");
+    if (!b) return;
+    input?.blur?.();
+    if (!canEdit(active())) return notice("HỒ SƠ NÀY CHỈ ĐƯỢC XEM");
+    setTimeout(openNASheet, 120);
+  });
+
   // ---------- Chữ ký rõ hơn ----------
   // Nét ký dày hơn (bản gốc 3px trên canvas 800px → in ra rất mảnh) và khi lưu thì cắt bỏ khoảng trắng thừa
   // quanh nét ký → chữ ký lấp đầy ô ký trên mẫu thay vì nhỏ xíu ở giữa.
@@ -928,7 +1010,7 @@
     const tools = $("templateSelect").parentElement;
     const zoom = document.createElement("div");
     zoom.className = "mobile-zoom";
-    zoom.innerHTML = `<button type="button" data-zoom="out" aria-label="Thu nhỏ">${icon("remove")}</button><button type="button" data-zoom="fit" class="fit-toggle"></button><button type="button" data-zoom="in" aria-label="Phóng to">${icon("add")}</button>`;
+    zoom.innerHTML = `<button type="button" data-zoom="fit" class="fit-toggle"></button><button type="button" class="na-btn" data-na aria-label="N/A: điền hoặc gạch chéo ô trống">N/A</button>`;
     tools.appendChild(zoom);
     // Nút Trang chủ ở đầu hàng chọn mẫu — chỉ hiện khi đang nhập (lúc đó thanh tiêu đề ẩn).
     const home = document.createElement("button");

@@ -1697,3 +1697,22 @@ body[data-theme] .mobile-form-open .form-dock button#tickAll.is-on,
 .mobile-form-open .form-dock button#tickAll span {
   display: block;
 }
+
+/* Nút N/A (thay cặp +/−): điền N/A hoặc gạch chéo ô trống */
+body[data-theme] .mobile-zoom button.na-btn,
+.mobile-zoom button.na-btn {
+  padding: 0 14px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  border-radius: 999px;
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+}
+#naSheet .sheet-btn:disabled {
+  opacity: 0.4;
+}
+#naSheet .muted {
+  margin: 0 0 12px;
+  color: var(--md-on-surface-variant);
+}
