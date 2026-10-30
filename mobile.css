@@ -1716,3 +1716,25 @@ body[data-theme] .mobile-zoom button.na-btn,
   margin: 0 0 12px;
   color: var(--md-on-surface-variant);
 }
+
+/* Nút "/ kg" chỉ hiện khi đang nhập ô Total Bags */
+#mobile-entry-nav .bag-slash {
+  display: none;
+}
+#mobile-entry-nav.bags-mode .bag-slash {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 64px;
+  font-size: 24px;
+  font-weight: 700;
+  background: var(--md-secondary-container);
+  color: var(--md-on-secondary-container);
+  border: 0;
+  border-radius: 999px;
+}
+#mobile-entry-nav .bag-slash small {
+  font-size: 12px;
+  font-weight: 600;
+}

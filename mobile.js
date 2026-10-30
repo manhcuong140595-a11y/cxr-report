@@ -104,7 +104,7 @@
   const bar = document.createElement("div");
   bar.id = "mobile-entry-nav";
   bar.hidden = true;
-  bar.innerHTML = `<span class="mobile-field-label"></span><div class="mobile-entry-buttons"><button type="button" data-key="Previous" aria-label="Ô trước">${icon("prev")}</button><button type="button" data-key="Enter">Tiếp <kbd>↵</kbd></button><button type="button" data-key="Tab">Đổi cột <kbd>⇥</kbd></button>${[0, 2, 3, 5, 10].map((n) => `<button type="button" class="time-chip" data-add="${n}" aria-label="Mốc cộng ${n} phút">+${n}</button>`).join("")}<button type="button" data-key="Close" aria-label="Ẩn bàn phím">${icon("kbHide")}</button></div>`;
+  bar.innerHTML = `<span class="mobile-field-label"></span><div class="mobile-entry-buttons"><button type="button" data-key="Previous" aria-label="Ô trước">${icon("prev")}</button><button type="button" data-key="Enter">Tiếp <kbd>↵</kbd></button><button type="button" data-key="Tab">Đổi cột <kbd>⇥</kbd></button><button type="button" class="bag-slash" data-slash aria-label="Thêm dấu gạch chéo để nhập số kg">/ <small>kg</small></button>${[0, 2, 3, 5, 10].map((n) => `<button type="button" class="time-chip" data-add="${n}" aria-label="Mốc cộng ${n} phút">+${n}</button>`).join("")}<button type="button" data-key="Close" aria-label="Ẩn bàn phím">${icon("kbHide")}</button></div>`;
   document.body.appendChild(bar);
 
   const nav = document.createElement("nav");
@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.33 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.34 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -836,6 +836,33 @@
     for (const x of list) if (NAME_FONT[x.id]) x.font = NAME_FONT[x.id];
     return list;
   };
+  // ---------- Total Bags: "số kiện / số kg" (vd 24/350) ----------
+  const BAGS_RE = /^(?:f421_)?b[123]TotalBags$/;
+  const oldNumericKind = fieldNumericKind;
+  fieldNumericKind = function (field) {
+    return BAGS_RE.test(field.id) ? "bags" : oldNumericKind(field);
+  };
+  const oldNumericAllowed = numericEntryAllowed;
+  numericEntryAllowed = function (kind, text) {
+    return kind === "bags" ? /^\d{0,4}(?:\/\d{0,5}(?:[.,]\d{0,1})?)?$/.test(text) : oldNumericAllowed(kind, text);
+  };
+  const oldValidate = validateFieldInput;
+  validateFieldInput = function (field, value) {
+    if (fieldNumericKind(field) === "bags" && value !== "" && value != null && !numericEntryAllowed("bags", String(value).trim()))
+      throw Error("Nhập số kiện, hoặc số kiện/số kg (vd 24/350).");
+    return fieldNumericKind(field) === "bags" ? String(value ?? "").trim() : oldValidate(field, value);
+  };
+  // Nút "/ kg" trên thanh nhập: chèn dấu "/" (bàn phím số không có phím này) để nhập tiếp số kg.
+  bar.addEventListener("click", (e) => {
+    if (!e.target.closest("[data-slash]") || !input) return;
+    const v = input.value;
+    if (v.includes("/")) return;
+    const at = input.selectionStart ?? v.length;
+    input.value = v.slice(0, at) + "/" + v.slice(input.selectionEnd ?? at);
+    input.setSelectionRange(at + 1, at + 1);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
   // ---------- N/A: điền "N/A" hoặc gạch chéo mọi ô trống còn lại của mẫu đang mở ----------
   const STRIKE = "✕"; // giá trị đánh dấu "gạch chéo ô" (vẽ thành 1 đường chéo, không in chữ)
   const rawRenderWriting = renderWritingText;
@@ -854,7 +881,18 @@
   const isBlank = (v) => v === "" || v === null || v === undefined || v === false;
   const blankFields = () => {
     const f = active();
-    return formFields().filter((x) => NA_TYPES.has(x.type) && !isCalculatedTotal(x.id) && isBlank(formValue(f, x)));
+    return formFields().filter(
+      (x) => NA_TYPES.has(x.type) && !isCalculatedTotal(x.id) && !NA_SKIP.test(x.id) && isBlank(formValue(f, x)),
+    );
+  };
+  // Không đụng: ô trống gộp bên dưới "Offload last cargo" (offloadInfo); cột ULD No / Position của bảng offload
+  // chỉ ghi N/A ĐÚNG 1 ô ở hàng đầu (các hàng dưới để trống) — xem NA_ONCE.
+  const NA_SKIP = /^(?:f\d+_)?(offloadInfo|bag[0-9]+uld(No|Pos)|offUld[0-9]+)$/;
+  const NA_ONCE = { fsags42: "bag0uldNo", "fsags55.1": "f551_offUld1" };
+  const ulrBlank = () => {
+    const id = templateId === "fsags55.1" ? NA_ONCE["fsags55.1"] : templateId.startsWith("fsags42") ? NA_ONCE.fsags42 : null,
+      x = id && formFields().find((y) => y.id === id);
+    return !!x && isBlank(formValue(active(), x));
   };
   const markedFields = () => {
     const f = active(),
@@ -877,6 +915,12 @@
         values[templateId][x.id] = mode === "fill" ? "N/A" : STRIKE;
         n++;
       }
+      const once = templateId === "fsags55.1" ? NA_ONCE["fsags55.1"] : templateId.startsWith("fsags42") ? NA_ONCE.fsags42 : null;
+      const ox = once && formFields().find((x) => x.id === once);
+      if (ox && isBlank(formValue(f, ox))) {
+        values[templateId][ox.id] = "N/A";
+        n++;
+      }
     }
     if (!n) return 0;
     const completedForms = { ...f.completedForms };
@@ -892,7 +936,7 @@
       d.className = "m3-sheet";
       document.body.appendChild(d);
     }
-    const blanks = blankFields().length,
+    const blanks = blankFields().length + (ulrBlank() ? 1 : 0),
       marked = markedFields().length;
     d.innerHTML = `<div class="sheet-handle"></div><h2>Ô trống còn lại</h2><p class="muted">Mẫu ${escape(String(templateId).replace(/^fsags/i, ""))}: ${blanks} ô trống chưa nhập.</p><div class="sheet-actions"><button type="button" class="sheet-btn primary-tonal" data-na-act="fill" ${blanks ? "" : "disabled"}><span><b>Điền N/A</b><small>Ghi “N/A” vào ${blanks} ô trống</small></span></button><button type="button" class="sheet-btn" data-na-act="strike" ${blanks ? "" : "disabled"}><span><b>Gạch chéo</b><small>Kẻ 1 đường chéo qua ${blanks} ô trống</small></span></button>${marked ? `<button type="button" class="sheet-btn" data-na-act="clear"><span><b>Bỏ N/A và gạch chéo</b><small>Trả ${marked} ô về trống</small></span></button>` : ""}</div><div class="dialog-actions"><button type="button" class="text-btn" data-na-act="cancel">Đóng</button></div>`;
     d.onclick = async (e) => {
@@ -1641,6 +1685,7 @@
     fitCellFrame(input);
     const isTime = !!field && fieldNumericKind(field) === "time";
     bar.classList.toggle("time-mode", isTime);
+    bar.classList.toggle("bags-mode", !!field && BAGS_RE.test(field.id));
     baseLabel = bar.querySelector(".mobile-field-label").textContent;
     updateClockLabel();
     startClock(isTime);
