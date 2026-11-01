@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.34 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.35 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -531,6 +531,10 @@
     }
     return oldKeyField2(field, key, direction);
   };
+  // 42.3 bảng Offloaded bag trang 2: ULD No + ULD Position là MỘT cột trên mẫu → ô ULD No phủ cả cột, chữ canh giữa;
+  // ô Position ẩn (không còn dùng). Toạ độ đo từ đường kẻ cột/hàng của ảnh mẫu.
+  const ULD_FIX = {"bag0uldNo": {"x": 52.78, "w": 8.7027, "y": 63.8177, "h": 2.3932, "baseline": 65.4701, "align": "center"}, "bag0uldPos": {"hidden": true}, "bag1uldNo": {"x": 52.78, "w": 8.7027, "y": 66.5527, "h": 2.4501, "baseline": 68.2336, "align": "center"}, "bag1uldPos": {"hidden": true}, "bag2uldNo": {"x": 52.78, "w": 8.7027, "y": 69.3447, "h": 2.3932, "baseline": 70.9972, "align": "center"}, "bag2uldPos": {"hidden": true}, "bag3uldNo": {"x": 52.78, "w": 8.7027, "y": 72.0798, "h": 2.3932, "baseline": 73.7322, "align": "center"}, "bag3uldPos": {"hidden": true}, "bag4uldNo": {"x": 52.78, "w": 8.7027, "y": 74.8148, "h": 2.4501, "baseline": 76.4957, "align": "center"}, "bag4uldPos": {"hidden": true}, "bag5uldNo": {"x": 52.78, "w": 8.7027, "y": 77.6068, "h": 2.3932, "baseline": 79.2593, "align": "center"}, "bag5uldPos": {"hidden": true}};
+  for (const f of CXR_FORM_LAYOUTS["fsags42.3"] || []) if (ULD_FIX[f.id]) Object.assign(f, ULD_FIX[f.id], ULD_FIX[f.id].hidden ? {} : { baselineSource: "printed-line" });
   // Số dòng tối đa của ô nhiều dòng có lineStep (khớp cách renderWritingText tính).
   function fieldLineCapacity(f) {
     if (!f?.multiline || !f.lineStep) return 0;
@@ -885,15 +889,11 @@
       (x) => NA_TYPES.has(x.type) && !isCalculatedTotal(x.id) && !NA_SKIP.test(x.id) && isBlank(formValue(f, x)),
     );
   };
-  // Không đụng: ô trống gộp bên dưới "Offload last cargo" (offloadInfo); cột ULD No / Position của bảng offload
-  // chỉ ghi N/A ĐÚNG 1 ô ở hàng đầu (các hàng dưới để trống) — xem NA_ONCE.
+  // Không đụng: ô trống gộp bên dưới "Offload last cargo" (offloadInfo) và ô Position (đã gộp vào ULD No).
+  // Cột ULD No/Position của bảng offload luôn ghi "N/A" cả cột (kể cả khi chọn Gạch chéo).
   const NA_SKIP = /^(?:f\d+_)?(offloadInfo|bag[0-9]+uld(No|Pos)|offUld[0-9]+)$/;
-  const NA_ONCE = { fsags42: "bag0uldNo", "fsags55.1": "f551_offUld1" };
-  const ulrBlank = () => {
-    const id = templateId === "fsags55.1" ? NA_ONCE["fsags55.1"] : templateId.startsWith("fsags42") ? NA_ONCE.fsags42 : null,
-      x = id && formFields().find((y) => y.id === id);
-    return !!x && isBlank(formValue(active(), x));
-  };
+  const ULD_COL = /^(?:f\d+_)?(bag[0-9]+uldNo|offUld[0-9]+)$/;
+  const uldBlank = () => formFields().filter((x) => ULD_COL.test(x.id) && isBlank(formValue(active(), x)));
   const markedFields = () => {
     const f = active(),
       vals = f?.values?.[templateId] || {};
@@ -915,9 +915,7 @@
         values[templateId][x.id] = mode === "fill" ? "N/A" : STRIKE;
         n++;
       }
-      const once = templateId === "fsags55.1" ? NA_ONCE["fsags55.1"] : templateId.startsWith("fsags42") ? NA_ONCE.fsags42 : null;
-      const ox = once && formFields().find((x) => x.id === once);
-      if (ox && isBlank(formValue(f, ox))) {
+      for (const ox of uldBlank()) {
         values[templateId][ox.id] = "N/A";
         n++;
       }
@@ -936,7 +934,7 @@
       d.className = "m3-sheet";
       document.body.appendChild(d);
     }
-    const blanks = blankFields().length + (ulrBlank() ? 1 : 0),
+    const blanks = blankFields().length + uldBlank().length,
       marked = markedFields().length;
     d.innerHTML = `<div class="sheet-handle"></div><h2>Ô trống còn lại</h2><p class="muted">Mẫu ${escape(String(templateId).replace(/^fsags/i, ""))}: ${blanks} ô trống chưa nhập.</p><div class="sheet-actions"><button type="button" class="sheet-btn primary-tonal" data-na-act="fill" ${blanks ? "" : "disabled"}><span><b>Điền N/A</b><small>Ghi “N/A” vào ${blanks} ô trống</small></span></button><button type="button" class="sheet-btn" data-na-act="strike" ${blanks ? "" : "disabled"}><span><b>Gạch chéo</b><small>Kẻ 1 đường chéo qua ${blanks} ô trống</small></span></button>${marked ? `<button type="button" class="sheet-btn" data-na-act="clear"><span><b>Bỏ N/A và gạch chéo</b><small>Trả ${marked} ô về trống</small></span></button>` : ""}</div><div class="dialog-actions"><button type="button" class="text-btn" data-na-act="cancel">Đóng</button></div>`;
     d.onclick = async (e) => {
