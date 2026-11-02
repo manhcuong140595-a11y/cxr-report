@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.41 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.42 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -470,7 +470,7 @@
   for (const f of CXR_FORM_LAYOUTS["fsags55.1"] || []) if (SIG_551[f.id]) Object.assign(f, SIG_551[f.id], { baselineSource: "printed-line" });
 
   // ---- BBBT trang 2: tải ảnh lên ----
-  const PHOTO_POS = [[8.06, 15.67], [50.77, 15.67], [8.06, 42.45], [50.77, 42.45], [8.06, 69.23], [50.77, 69.23]];
+  const PHOTO_POS = Array.from({ length: 12 }, () => [8.06, 15.67]);
   if (CXR_FORM_LAYOUTS.bbbt && !CXR_FORM_LAYOUTS.bbbt.some((f) => f.id === "bbbtPhoto1"))
     PHOTO_POS.forEach(([x, y], i) =>
       CXR_FORM_LAYOUTS.bbbt.push({ id: "bbbtPhoto" + (i + 1), label: "Ảnh " + (i + 1), page: 1, x, y, w: 41.1, h: 25.64, type: "signature", multiline: false, font: 12, align: "center", refWidth: 1241, refHeight: 1755 }),
@@ -500,8 +500,8 @@
     });
   }
   const oldOpenFieldEntry = openFieldEntry;
-  const PHOTO_IDS = [1, 2, 3, 4, 5, 6].map((i) => "bbbtPhoto" + i);
-  const photoFieldList = () => (CXR_FORM_LAYOUTS.bbbt || []).filter((f) => /^bbbtPhoto\d$/.test(f.id));
+  const PHOTO_IDS = Array.from({ length: 12 }, (_, i) => "bbbtPhoto" + (i + 1));
+  const photoFieldList = () => (CXR_FORM_LAYOUTS.bbbt || []).filter((f) => /^bbbtPhoto\d+$/.test(f.id));
   const photoVals = () => {
     const v = active()?.values?.bbbt || {};
     return PHOTO_IDS.map((id) => (typeof v[id] === "string" && v[id].startsWith("data:image") ? v[id] : ""));
@@ -509,7 +509,7 @@
   // Bố cục tự gọn theo số ảnh: ảnh đã có + 1 ô "+" để thêm.
   function photoRects(m) {
     const X = 8.06, Y = 15.67, W = 83.84, H = 78.8, G = 1.6;
-    const [cols, rows] = m <= 1 ? [1, 1] : m === 2 ? [1, 2] : m <= 4 ? [2, 2] : [2, 3];
+    const [cols, rows] = m <= 1 ? [1, 1] : m === 2 ? [1, 2] : m <= 4 ? [2, 2] : m <= 6 ? [2, 3] : m <= 8 ? [2, 4] : m <= 9 ? [3, 3] : [3, 4];
     const w = (W - G * (cols - 1)) / cols, h = (H - G * (rows - 1)) / rows;
     return Array.from({ length: m }, (_, i) => ({ x: X + (i % cols) * (w + G), y: Y + Math.floor(i / cols) * (h + G), w, h }));
   }
@@ -554,10 +554,10 @@
       } else {
         const room = vals.filter((v) => !v).length;
         for (const q of queue.slice(0, room)) vals[vals.findIndex((v) => !v)] = q;
-        if (queue.length > room) notice("Chỉ nhận tối đa 6 ảnh");
+        if (queue.length > room) notice("Chỉ nhận tối đa 12 ảnh");
       }
       const before = photoVals();
-      for (let i = 0; i < 6; i++) if (vals[i] !== before[i]) await commitEntry(fields[i], vals[i]);
+      for (let i = 0; i < PHOTO_IDS.length; i++) if (vals[i] !== before[i]) await commitEntry(fields[i], vals[i]);
     } catch (err) {
       notice(err.message || "Không lưu được ảnh");
     }
@@ -586,7 +586,7 @@
           const vals = photoVals(), fields = photoFieldList(), before = vals.slice();
           vals.splice(PHOTO_IDS.indexOf(id), 1);
           vals.push("");
-          for (let i = 0; i < 6; i++) if (vals[i] !== before[i]) await commitEntry(fields[i], vals[i]);
+          for (let i = 0; i < PHOTO_IDS.length; i++) if (vals[i] !== before[i]) await commitEntry(fields[i], vals[i]);
         } catch (err) {
           notice(err.message || "Không xóa được ảnh");
         }
@@ -595,7 +595,7 @@
     d.showModal();
   }
   window.openFieldEntry = function (id) {
-    if (/^bbbtPhoto\d$/.test(id)) {
+    if (/^bbbtPhoto\d+$/.test(id)) {
       if (!canEdit(active())) return notice("HỒ SƠ NÀY CHỈ ĐƯỢC XEM");
       if (photoVals()[PHOTO_IDS.indexOf(id)]) return openPhotoSheet(id);
       return pickPhotos({ id, replace: false });
