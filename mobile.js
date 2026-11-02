@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.42 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.43 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -538,17 +538,19 @@
     document.body.appendChild(photoInput);
   }
   let photoTarget = null;
-  photoInput.addEventListener("change", async () => {
-    const files = [...photoInput.files],
+  let photoBusy = false;
+  const onPhotoPicked = async () => {
+    const files = [...(photoInput.files || [])],
       target = photoTarget;
-    photoInput.value = "";
-    if (!files.length || !target) return;
-    notice("Đang xử lý " + files.length + " ảnh…");
+    if (!files.length || !target || photoBusy) return;
+    photoBusy = true;
+    notice("Đã chọn " + files.length + " ảnh · đang đọc…");
     try {
       const fields = photoFieldList(), vals = photoVals();
       const slot = target.replace ? PHOTO_IDS.indexOf(target.id) : -1;
       const queue = [];
       for (const f of files) queue.push(await shrinkPhoto(f));
+      notice("Đã đọc " + queue.length + " ảnh · đang lưu…");
       if (target.replace) {
         vals[slot] = queue[0];
       } else {
@@ -558,10 +560,16 @@
       }
       const before = photoVals();
       for (let i = 0; i < PHOTO_IDS.length; i++) if (vals[i] !== before[i]) await commitEntry(fields[i], vals[i]);
+      notice("Đã thêm ảnh");
     } catch (err) {
-      notice(err.message || "Không lưu được ảnh");
+      notice("Lỗi ảnh: " + (err && err.message ? err.message : err));
+    } finally {
+      photoBusy = false;
+      try { photoInput.value = ""; } catch (e) {}
     }
-  });
+  };
+  photoInput.addEventListener("change", onPhotoPicked);
+  photoInput.addEventListener("input", onPhotoPicked);
   function pickPhotos(target) {
     photoTarget = target;
     photoInput.click();
