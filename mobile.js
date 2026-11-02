@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.40 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.41 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -476,23 +476,27 @@
       CXR_FORM_LAYOUTS.bbbt.push({ id: "bbbtPhoto" + (i + 1), label: "Ảnh " + (i + 1), page: 1, x, y, w: 41.1, h: 25.64, type: "signature", multiline: false, font: 12, align: "center", refWidth: 1241, refHeight: 1755 }),
     );
   function shrinkPhoto(file) {
+    // Dùng FileReader + data: URL (blob: URL bị chặn trong WebView offline).
     return new Promise((ok, bad) => {
-      const url = URL.createObjectURL(file),
-        img = new Image();
-      img.onload = () => {
-        const k = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight)),
-          c = document.createElement("canvas");
-        c.width = Math.round(img.naturalWidth * k);
-        c.height = Math.round(img.naturalHeight * k);
-        const x = c.getContext("2d");
-        x.fillStyle = "#fff";
-        x.fillRect(0, 0, c.width, c.height);
-        x.drawImage(img, 0, 0, c.width, c.height);
-        URL.revokeObjectURL(url);
-        ok(c.toDataURL("image/jpeg", 0.8));
+      const r = new FileReader();
+      r.onerror = () => bad(Error("Không đọc được ảnh"));
+      r.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const k = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight)),
+            c = document.createElement("canvas");
+          c.width = Math.round(img.naturalWidth * k);
+          c.height = Math.round(img.naturalHeight * k);
+          const x = c.getContext("2d");
+          x.fillStyle = "#fff";
+          x.fillRect(0, 0, c.width, c.height);
+          x.drawImage(img, 0, 0, c.width, c.height);
+          ok(c.toDataURL("image/jpeg", 0.8));
+        };
+        img.onerror = () => bad(Error("Không đọc được ảnh (định dạng không hỗ trợ)"));
+        img.src = r.result;
       };
-      img.onerror = () => bad(Error("Không đọc được ảnh"));
-      img.src = url;
+      r.readAsDataURL(file);
     });
   }
   const oldOpenFieldEntry = openFieldEntry;
@@ -539,6 +543,7 @@
       target = photoTarget;
     photoInput.value = "";
     if (!files.length || !target) return;
+    notice("Đang xử lý " + files.length + " ảnh…");
     try {
       const fields = photoFieldList(), vals = photoVals();
       const slot = target.replace ? PHOTO_IDS.indexOf(target.id) : -1;
