@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.39 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.40 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -495,6 +495,72 @@
       img.src = url;
     });
   }
+  const oldOpenFieldEntry = openFieldEntry;
+  const PHOTO_IDS = [1, 2, 3, 4, 5, 6].map((i) => "bbbtPhoto" + i);
+  const photoFieldList = () => (CXR_FORM_LAYOUTS.bbbt || []).filter((f) => /^bbbtPhoto\d$/.test(f.id));
+  const photoVals = () => {
+    const v = active()?.values?.bbbt || {};
+    return PHOTO_IDS.map((id) => (typeof v[id] === "string" && v[id].startsWith("data:image") ? v[id] : ""));
+  };
+  // Bố cục tự gọn theo số ảnh: ảnh đã có + 1 ô "+" để thêm.
+  function photoRects(m) {
+    const X = 8.06, Y = 15.67, W = 83.84, H = 78.8, G = 1.6;
+    const [cols, rows] = m <= 1 ? [1, 1] : m === 2 ? [1, 2] : m <= 4 ? [2, 2] : [2, 3];
+    const w = (W - G * (cols - 1)) / cols, h = (H - G * (rows - 1)) / rows;
+    return Array.from({ length: m }, (_, i) => ({ x: X + (i % cols) * (w + G), y: Y + Math.floor(i / cols) * (h + G), w, h }));
+  }
+  function arrangePhotos(list) {
+    const vals = photoVals(), filled = vals.map((v, i) => (v ? i : -1)).filter((i) => i >= 0);
+    const firstEmpty = vals.findIndex((v) => !v);
+    const order = [...filled, ...(firstEmpty >= 0 ? [firstEmpty] : [])];
+    const rects = photoRects(order.length);
+    for (const f of list) {
+      const k = PHOTO_IDS.indexOf(f.id);
+      if (k < 0) continue;
+      const p = order.indexOf(k);
+      if (p < 0) Object.assign(f, { w: 0, h: 0 });
+      else Object.assign(f, rects[p]);
+    }
+  }
+  // Một ô input luôn nằm trong DOM (input rời khỏi DOM có thể bị WebView huỷ trước khi chọn xong).
+  let photoInput = document.getElementById("photoPick");
+  if (!photoInput) {
+    photoInput = document.createElement("input");
+    photoInput.type = "file";
+    photoInput.id = "photoPick";
+    photoInput.accept = "image/*";
+    photoInput.multiple = true;
+    photoInput.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0";
+    document.body.appendChild(photoInput);
+  }
+  let photoTarget = null;
+  photoInput.addEventListener("change", async () => {
+    const files = [...photoInput.files],
+      target = photoTarget;
+    photoInput.value = "";
+    if (!files.length || !target) return;
+    try {
+      const fields = photoFieldList(), vals = photoVals();
+      const slot = target.replace ? PHOTO_IDS.indexOf(target.id) : -1;
+      const queue = [];
+      for (const f of files) queue.push(await shrinkPhoto(f));
+      if (target.replace) {
+        vals[slot] = queue[0];
+      } else {
+        const room = vals.filter((v) => !v).length;
+        for (const q of queue.slice(0, room)) vals[vals.findIndex((v) => !v)] = q;
+        if (queue.length > room) notice("Chỉ nhận tối đa 6 ảnh");
+      }
+      const before = photoVals();
+      for (let i = 0; i < 6; i++) if (vals[i] !== before[i]) await commitEntry(fields[i], vals[i]);
+    } catch (err) {
+      notice(err.message || "Không lưu được ảnh");
+    }
+  });
+  function pickPhotos(target) {
+    photoTarget = target;
+    photoInput.click();
+  }
   function openPhotoSheet(id) {
     let d = document.getElementById("photoSheet");
     if (!d) {
@@ -503,52 +569,31 @@
       d.className = "m3-sheet";
       document.body.appendChild(d);
     }
-    const field = formFields().find((x) => x.id === id),
-      has = !!formValue(active(), field);
-    d.innerHTML = `<div class="sheet-handle"></div><h2>${escape(field.label)}</h2><div class="sheet-actions"><label class="sheet-btn primary-tonal"><span><b>${has ? "Đổi ảnh" : "Chọn ảnh"}</b><small>Từ thư viện hoặc máy ảnh</small></span><input type="file" accept="image/*" hidden></label>${has ? '<button type="button" class="sheet-btn" data-ph="del"><span><b>Xóa ảnh</b><small>Trả ô về trống</small></span></button>' : ""}</div><div class="dialog-actions"><button type="button" class="text-btn" data-ph="x">Đóng</button></div>`;
-    d.querySelector("input").onchange = async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      d.close();
-      try {
-        await commitEntry(field, await shrinkPhoto(file));
-      } catch (err) {
-        notice(err.message || "Không lưu được ảnh");
-      }
-    };
+    const field = photoFieldList().find((x) => x.id === id);
+    d.innerHTML = `<div class="sheet-handle"></div><h2>${escape(field.label)}</h2><div class="sheet-actions"><button type="button" class="sheet-btn primary-tonal" data-ph="swap"><span><b>Đổi ảnh</b><small>Chọn ảnh khác thay vào đây</small></span></button><button type="button" class="sheet-btn" data-ph="del"><span><b>Xóa ảnh</b><small>Các ảnh sau tự dồn lên</small></span></button></div><div class="dialog-actions"><button type="button" class="text-btn" data-ph="x">Đóng</button></div>`;
     d.onclick = async (e) => {
       const b = e.target.closest("[data-ph]");
       if (!b) return;
       d.close();
-      if (b.dataset.ph === "del") await commitEntry(field, "");
+      if (b.dataset.ph === "swap") pickPhotos({ id, replace: true });
+      if (b.dataset.ph === "del") {
+        try {
+          const vals = photoVals(), fields = photoFieldList(), before = vals.slice();
+          vals.splice(PHOTO_IDS.indexOf(id), 1);
+          vals.push("");
+          for (let i = 0; i < 6; i++) if (vals[i] !== before[i]) await commitEntry(fields[i], vals[i]);
+        } catch (err) {
+          notice(err.message || "Không xóa được ảnh");
+        }
+      }
     };
     d.showModal();
   }
-  const oldOpenFieldEntry = openFieldEntry;
   window.openFieldEntry = function (id) {
     if (/^bbbtPhoto\d$/.test(id)) {
       if (!canEdit(active())) return notice("HỒ SƠ NÀY CHỈ ĐƯỢC XEM");
-      const fld = formFields().find((x) => x.id === id);
-      if (formValue(active(), fld)) return openPhotoSheet(id);
-      // ô trống: mở thẳng bộ chọn ảnh (chọn nhiều ảnh sẽ điền các ô trống kế tiếp)
-      const inp = document.createElement("input");
-      inp.type = "file";
-      inp.accept = "image/*";
-      inp.multiple = true;
-      inp.onchange = async () => {
-        const files = [...inp.files];
-        if (!files.length) return;
-        const slots = formFields().filter((x) => /^bbbtPhoto\d$/.test(x.id) && (x.id === id || !formValue(active(), x)));
-        const n0 = +id.slice(-1), key = (x) => ((+x.id.slice(-1) - n0 + 6) % 6), order = slots.sort((a, b) => key(a) - key(b));
-        try {
-          for (let i = 0; i < files.length && i < order.length; i++) await commitEntry(order[i], await shrinkPhoto(files[i]));
-          if (files.length > order.length) notice("Chỉ còn " + order.length + " ô trống, đã bỏ bớt ảnh thừa");
-        } catch (err) {
-          notice(err.message || "Không lưu được ảnh");
-        }
-      };
-      inp.click();
-      return;
+      if (photoVals()[PHOTO_IDS.indexOf(id)]) return openPhotoSheet(id);
+      return pickPhotos({ id, replace: false });
     }
     return oldOpenFieldEntry.apply(this, arguments);
   };
@@ -922,6 +967,7 @@
   formFields = function (...a) {
     const list = rawFormFields.apply(this, a);
     for (const x of list) if (NAME_FONT[x.id]) x.font = NAME_FONT[x.id];
+    if (templateId === "bbbt") arrangePhotos(list);
     return list;
   };
   // ---------- Total Bags: "số kiện / số kg" (vd 24/350) ----------
