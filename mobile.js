@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.43 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.44 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -539,20 +539,14 @@
   }
   let photoTarget = null;
   let photoBusy = false;
-  const onPhotoPicked = async () => {
-    const files = [...(photoInput.files || [])],
-      target = photoTarget;
-    if (!files.length || !target || photoBusy) return;
+  async function applyPhotos(queue) {
+    const target = photoTarget;
+    if (!queue.length || !target || photoBusy) return;
     photoBusy = true;
-    notice("Đã chọn " + files.length + " ảnh · đang đọc…");
     try {
       const fields = photoFieldList(), vals = photoVals();
-      const slot = target.replace ? PHOTO_IDS.indexOf(target.id) : -1;
-      const queue = [];
-      for (const f of files) queue.push(await shrinkPhoto(f));
-      notice("Đã đọc " + queue.length + " ảnh · đang lưu…");
       if (target.replace) {
-        vals[slot] = queue[0];
+        vals[PHOTO_IDS.indexOf(target.id)] = queue[0];
       } else {
         const room = vals.filter((v) => !v).length;
         for (const q of queue.slice(0, room)) vals[vals.findIndex((v) => !v)] = q;
@@ -565,13 +559,32 @@
       notice("Lỗi ảnh: " + (err && err.message ? err.message : err));
     } finally {
       photoBusy = false;
+    }
+  }
+  // APK: Java đọc + thu nhỏ ảnh rồi gọi hàm này.
+  window.CXRPhotosIn = (arr) => applyPhotos(Array.isArray(arr) ? arr : []);
+  const onPhotoPicked = async () => {
+    const files = [...(photoInput.files || [])];
+    if (!files.length || !photoTarget) return;
+    notice("Đã chọn " + files.length + " ảnh · đang đọc…");
+    try {
+      const queue = [];
+      for (const f of files) queue.push(await shrinkPhoto(f));
+      await applyPhotos(queue);
+    } catch (err) {
+      notice("Lỗi ảnh: " + (err && err.message ? err.message : err));
+    } finally {
       try { photoInput.value = ""; } catch (e) {}
     }
   };
   photoInput.addEventListener("change", onPhotoPicked);
-  photoInput.addEventListener("input", onPhotoPicked);
   function pickPhotos(target) {
     photoTarget = target;
+    const br = window.CXRAndroid;
+    if (br && typeof br.pickPhotos === "function") {
+      const room = PHOTO_IDS.length - photoVals().filter(Boolean).length;
+      return br.pickPhotos(target.replace ? 1 : Math.max(1, room));
+    }
     photoInput.click();
   }
   function openPhotoSheet(id) {
