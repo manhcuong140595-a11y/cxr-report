@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.36 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.37 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -528,7 +528,27 @@
   window.openFieldEntry = function (id) {
     if (/^bbbtPhoto\d$/.test(id)) {
       if (!canEdit(active())) return notice("HỒ SƠ NÀY CHỈ ĐƯỢC XEM");
-      return openPhotoSheet(id);
+      const fld = formFields().find((x) => x.id === id);
+      if (formValue(active(), fld)) return openPhotoSheet(id);
+      // ô trống: mở thẳng bộ chọn ảnh (chọn nhiều ảnh sẽ điền các ô trống kế tiếp)
+      const inp = document.createElement("input");
+      inp.type = "file";
+      inp.accept = "image/*";
+      inp.multiple = true;
+      inp.onchange = async () => {
+        const files = [...inp.files];
+        if (!files.length) return;
+        const slots = formFields().filter((x) => /^bbbtPhoto\d$/.test(x.id) && (x.id === id || !formValue(active(), x)));
+        const n0 = +id.slice(-1), key = (x) => ((+x.id.slice(-1) - n0 + 6) % 6), order = slots.sort((a, b) => key(a) - key(b));
+        try {
+          for (let i = 0; i < files.length && i < order.length; i++) await commitEntry(order[i], await shrinkPhoto(files[i]));
+          if (files.length > order.length) notice("Chỉ còn " + order.length + " ô trống, đã bỏ bớt ảnh thừa");
+        } catch (err) {
+          notice(err.message || "Không lưu được ảnh");
+        }
+      };
+      inp.click();
+      return;
     }
     return oldOpenFieldEntry.apply(this, arguments);
   };
