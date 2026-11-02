@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.37 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.38 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -1445,7 +1445,10 @@
   window.CXRExportSheet = function (name, mime, data) {
     const bridge = window.CXRAndroid;
     try {
-      if (typeof bridge?.share === "function") bridge.share(name, mime, data);
+      // APK: lưu thẳng vào Tải xuống. Web Android: tải xuống trực tiếp. iPhone: bảng chia sẻ.
+      if (typeof bridge?.saveDownload === "function" && bridge.saveDownload(name, mime, data)) return;
+      if (bridge?.platform === "web" && /Android/i.test(navigator.userAgent)) bridge.save(name, mime, data);
+      else if (typeof bridge?.share === "function") bridge.share(name, mime, data);
       else bridge.save(name, mime, data); // APK cũ chưa có chia sẻ
     } catch (err) {
       notice("Không xuất được file: " + err.message);
