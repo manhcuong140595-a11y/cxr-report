@@ -25,7 +25,7 @@ async function renderReportPage(flight,tpl,fields,index){
  for(const field of fields.filter(x=>x.page===index)){
  const values=flight.values?.[tpl.id]||{};const value=isCalculatedTotal(field.id)?passengerTotal(values,field.id):Object.hasOwn(values,field.id)?values[field.id]:initialFormValue(flight,field);if(value===''||value===null||value===undefined||value===false)continue;
  const x=field.x/100*W,y=field.y/100*H,w=field.w/100*W,h=field.h/100*H;
- if(field.type==='signature'){if(String(value).startsWith('data:image/png;base64,'))signatures.push({value,x,y,w,h});continue}
+ if(field.type==='signature'){if(/^data:image\/(png|jpeg);base64,/.test(String(value)))signatures.push({value,x,y,w,h});continue}
  if(field.type==='check'){const b=field.checkBox||{x:0,y:0,w:100,h:100};pieces.push(`<svg x="${x+w*b.x/100}" y="${y+h*b.y/100}" width="${w*b.w/100}" height="${h*b.h/100}" viewBox="0 0 100 100" preserveAspectRatio="none" overflow="visible"><path d="M20 51 L42 75 L82 22" fill="none" stroke="#003b8e" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>`)}
  else pieces.push(renderWritingText(field,value).replace('<svg ',`<svg x="${x}" y="${y}" width="${w}" height="${h}" overflow="visible" `));
  }

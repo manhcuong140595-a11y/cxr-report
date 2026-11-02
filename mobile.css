@@ -1738,3 +1738,44 @@ body[data-theme] .mobile-zoom button.na-btn,
   font-size: 12px;
   font-weight: 600;
 }
+
+/* BBBT trang 2: ô ảnh */
+[data-field^="bbbtPhoto"] {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+  border: 0 !important;
+  outline: 1.5px dashed #9aa5b1;
+  outline-offset: -1px;
+  border-radius: 6px;
+  padding: 0 !important;
+}
+[data-field^="bbbtPhoto"].blank::after {
+  content: "＋ Ảnh";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  color: #8a96a3;
+  font-size: 4cqw;
+  font-weight: 600;
+}
+[data-field^="bbbtPhoto"]:not(.blank) {
+  outline: 0;
+}
+[data-field^="bbbtPhoto"] img {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  object-fit: contain;
+  object-position: center;
+}
+#photoSheet label.sheet-btn {
+  cursor: pointer;
+}

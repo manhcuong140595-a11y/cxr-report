@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.35 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.36 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -468,6 +468,70 @@
   // NGAY SAU chữ "Full name:" (trước đây đè lên chữ in sẵn). Đo từ ảnh mẫu trang 2.
   const SIG_551 = {"f551_engineerSig": {"x": 7.4134, "w": 31.4263, "y": 87.1225, "h": 4.7863}, "f551_loadingStaffSig": {"x": 60.274, "w": 31.9098, "y": 85.755, "h": 6.154}, "f551_engineerName": {"x": 15.8743, "w": 21.8372, "y": 91.396, "h": 1.7094, "baseline": 92.8775, "align": "center"}, "f551_loadingStaffName": {"x": 68.7349, "w": 23.4488, "y": 91.396, "h": 1.7094, "baseline": 92.8775, "align": "center"}};
   for (const f of CXR_FORM_LAYOUTS["fsags55.1"] || []) if (SIG_551[f.id]) Object.assign(f, SIG_551[f.id], { baselineSource: "printed-line" });
+
+  // ---- BBBT trang 2: tải ảnh lên ----
+  const PHOTO_POS = [[8.06, 15.67], [50.77, 15.67], [8.06, 42.45], [50.77, 42.45], [8.06, 69.23], [50.77, 69.23]];
+  if (CXR_FORM_LAYOUTS.bbbt && !CXR_FORM_LAYOUTS.bbbt.some((f) => f.id === "bbbtPhoto1"))
+    PHOTO_POS.forEach(([x, y], i) =>
+      CXR_FORM_LAYOUTS.bbbt.push({ id: "bbbtPhoto" + (i + 1), label: "Ảnh " + (i + 1), page: 1, x, y, w: 41.1, h: 25.64, type: "signature", multiline: false, font: 12, align: "center", refWidth: 1241, refHeight: 1755 }),
+    );
+  function shrinkPhoto(file) {
+    return new Promise((ok, bad) => {
+      const url = URL.createObjectURL(file),
+        img = new Image();
+      img.onload = () => {
+        const k = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight)),
+          c = document.createElement("canvas");
+        c.width = Math.round(img.naturalWidth * k);
+        c.height = Math.round(img.naturalHeight * k);
+        const x = c.getContext("2d");
+        x.fillStyle = "#fff";
+        x.fillRect(0, 0, c.width, c.height);
+        x.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        ok(c.toDataURL("image/jpeg", 0.8));
+      };
+      img.onerror = () => bad(Error("Không đọc được ảnh"));
+      img.src = url;
+    });
+  }
+  function openPhotoSheet(id) {
+    let d = document.getElementById("photoSheet");
+    if (!d) {
+      d = document.createElement("dialog");
+      d.id = "photoSheet";
+      d.className = "m3-sheet";
+      document.body.appendChild(d);
+    }
+    const field = formFields().find((x) => x.id === id),
+      has = !!formValue(active(), field);
+    d.innerHTML = `<div class="sheet-handle"></div><h2>${escape(field.label)}</h2><div class="sheet-actions"><label class="sheet-btn primary-tonal"><span><b>${has ? "Đổi ảnh" : "Chọn ảnh"}</b><small>Từ thư viện hoặc máy ảnh</small></span><input type="file" accept="image/*" hidden></label>${has ? '<button type="button" class="sheet-btn" data-ph="del"><span><b>Xóa ảnh</b><small>Trả ô về trống</small></span></button>' : ""}</div><div class="dialog-actions"><button type="button" class="text-btn" data-ph="x">Đóng</button></div>`;
+    d.querySelector("input").onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      d.close();
+      try {
+        await commitEntry(field, await shrinkPhoto(file));
+      } catch (err) {
+        notice(err.message || "Không lưu được ảnh");
+      }
+    };
+    d.onclick = async (e) => {
+      const b = e.target.closest("[data-ph]");
+      if (!b) return;
+      d.close();
+      if (b.dataset.ph === "del") await commitEntry(field, "");
+    };
+    d.showModal();
+  }
+  const oldOpenFieldEntry = openFieldEntry;
+  window.openFieldEntry = function (id) {
+    if (/^bbbtPhoto\d$/.test(id)) {
+      if (!canEdit(active())) return notice("HỒ SƠ NÀY CHỈ ĐƯỢC XEM");
+      return openPhotoSheet(id);
+    }
+    return oldOpenFieldEntry.apply(this, arguments);
+  };
   // 55.1: số/chữ ngắn nhập vào canh GIỮA ô (trừ ô ghi chú, nhận xét, lý do, briefing, họ tên, hàng đặc biệt).
   const KEEP_LEFT_551 = /^f551_(handlingNotes|airlineComment|reasonText|briefing|engineerName|loadingStaffName|arrSpecial|depSpecial)$/;
   for (const f of CXR_FORM_LAYOUTS["fsags55.1"] || [])
