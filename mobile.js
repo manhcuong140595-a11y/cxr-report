@@ -407,7 +407,7 @@
     const recent = sortFlights(flights).slice(0, selecting ? flights.length : 8);
     const todayCount = flights.filter((x) => x.date === today()).length;
     $("content").innerHTML =
-      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.44 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
+      `<section class="mobile-welcome"><small>CXR · FLIGHT REPORT</small><h1>Sẵn sàng cho chuyến bay tiếp theo</h1><div class="welcome-stats"><span><b>${todayCount}</b> chuyến hôm nay</span><span><b>${flights.length}</b> hồ sơ</span></div></section><div class="mobile-section-title"><h2>Chuyến bay</h2><button id="allFlights" class="text-btn">Xem tất cả</button></div>${table(recent)}<p class="offline-pill"><span class="dot"></span>Offline · 0.45 · Dữ liệu lưu trên điện thoại này</p><button id="createFlight" class="m3-fab">${icon("add")}<span>Tạo chuyến bay</span></button>`;
     $("createFlight").onclick = () => openEditor();
     $("allFlights").onclick = () => {
       go("myflight");
@@ -469,6 +469,13 @@
   const SIG_551 = {"f551_engineerSig": {"x": 7.4134, "w": 31.4263, "y": 87.1225, "h": 4.7863}, "f551_loadingStaffSig": {"x": 60.274, "w": 31.9098, "y": 85.755, "h": 6.154}, "f551_engineerName": {"x": 15.8743, "w": 21.8372, "y": 91.396, "h": 1.7094, "baseline": 92.8775, "align": "center"}, "f551_loadingStaffName": {"x": 68.7349, "w": 23.4488, "y": 91.396, "h": 1.7094, "baseline": 92.8775, "align": "center"}};
   for (const f of CXR_FORM_LAYOUTS["fsags55.1"] || []) if (SIG_551[f.id]) Object.assign(f, SIG_551[f.id], { baselineSource: "printed-line" });
 
+  // 42.3: ô ARR Delay No/Yes bị khai báo "displayCheck" (thành ô chữ, không tick được) → đổi thành ô tick thường.
+  const DELAY_BOX_423 = { arrDelayNo: { x: 19.42, y: 58.06, w: 1.69, h: 1.2 }, arrDelayYes: { x: 26.27, y: 58.06, w: 1.69, h: 1.2 } };
+  for (const f of CXR_FORM_LAYOUTS["fsags42.3"] || []) {
+    if (f.type === "displayCheck") f.type = "check";
+    if (DELAY_BOX_423[f.id]) Object.assign(f, DELAY_BOX_423[f.id]);
+  }
+  if (window.CXR_FOCUS_BOUNDS?.["fsags42.3"]) for (const id of Object.keys(DELAY_BOX_423)) delete window.CXR_FOCUS_BOUNDS["fsags42.3"][id];
   // ---- BBBT trang 2: tải ảnh lên ----
   const PHOTO_POS = Array.from({ length: 12 }, () => [8.06, 15.67]);
   if (CXR_FORM_LAYOUTS.bbbt && !CXR_FORM_LAYOUTS.bbbt.some((f) => f.id === "bbbtPhoto1"))
